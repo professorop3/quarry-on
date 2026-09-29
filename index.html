@@ -1,0 +1,2215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Company Dashboard</title>
+<style>
+/* ---- tokens: dark first (the game's own register), light kept for daylight use ---- */
+:root {
+  color-scheme: dark;
+  --plane: #0b0d10;
+  --surface: #15181d;
+  --surface-2: #1c2027;
+  --surface-3: #242933;
+  --ink: #f4f1ea;
+  --ink-2: #b9b4a8;
+  --muted: #7d7a72;
+  --grid: #262a31;
+  --axis: #3a3f48;
+  --ring: rgba(255,255,255,0.07);
+  --ring-2: rgba(255,255,255,0.12);
+  --s1: #c98500;  /* amber, the salt-mine accent */
+  --s2: #3987e5;  /* blue */
+  --s3: #199e70;  /* green */
+  --accent: #e5a02a;
+  --accent-soft: rgba(229,160,42,0.14);
+  --crystal: #7fe0d4;
+  --good: #0ca30c;
+  --good-ink: #3ecf5a;
+  --warn: #fab219;
+  --warn-ink: #fab219;
+  --crit: #d03b3b;
+  --crit-ink: #ff7070;
+  --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.35);
+  --glow: 0 0 0 1px rgba(229,160,42,0.35), 0 0 24px rgba(229,160,42,0.12);
+  --tex: repeating-linear-gradient(135deg, rgba(255,255,255,0.018) 0 2px, transparent 2px 7px);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --plane: #f4f2ed; --surface: #fffefb; --surface-2: #f3f0e8; --surface-3: #ebe6da;
+  --ink: #16140f; --ink-2: #4e4a40; --muted: #847f73;
+  --grid: #e7e2d6; --axis: #cfc8b8; --ring: rgba(22,20,15,0.09); --ring-2: rgba(22,20,15,0.16);
+  --s1: #c47f00; --s2: #2a78d6; --s3: #138a60;
+  --accent: #b87400; --accent-soft: rgba(184,116,0,0.10); --crystal: #0f8f82;
+  --good-ink: #0a7a0a; --warn-ink: #8a5a00; --crit-ink: #b42323;
+  --shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 18px rgba(0,0,0,.05);
+  --glow: 0 0 0 1px rgba(184,116,0,0.35);
+  --tex: repeating-linear-gradient(135deg, rgba(0,0,0,0.018) 0 2px, transparent 2px 7px);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background:
+    radial-gradient(1200px 500px at 12% -10%, rgba(229,160,42,0.10), transparent 60%),
+    radial-gradient(900px 420px at 110% 0%, rgba(127,224,212,0.07), transparent 60%),
+    var(--tex), var(--plane);
+  background-attachment: fixed;
+  color: var(--ink);
+  font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.num, .kpi .value, .hero-value, .brand h1 { font-family: "Oxanium", "Inter", system-ui, sans-serif; }
+.wrap { max-width: 1220px; margin: 0 auto; padding: 22px 16px 56px; }
+
+/* ---- header ---- */
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; margin-bottom: 16px; }
+.brand { display: flex; align-items: center; gap: 14px; flex: 1 1 auto; min-width: 0; }
+.brand-mark { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 12px; display: grid; place-items: center;
+  background: linear-gradient(145deg, rgba(229,160,42,0.22), rgba(127,224,212,0.10)); box-shadow: var(--glow); }
+.brand-text { min-width: 0; }
+.brand h1 { font-size: 22px; margin: 0; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stars { color: var(--accent); font-size: 13px; letter-spacing: 2px; }
+.stars .off { color: var(--axis); }
+.meta { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 2px; }
+.live { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--ring); color: var(--ink-2); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
+.live.stale i { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.live.busy i { background: var(--accent); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+button, .btn {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--ring-2); border-radius: 10px; padding: 7px 13px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; transition: background .12s, border-color .12s, transform .06s;
+}
+button:hover { background: var(--surface-3); border-color: var(--accent); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: default; border-color: var(--ring); }
+button svg { width: 15px; height: 15px; }
+button.primary { background: linear-gradient(180deg, #f0b23e, #d18d10); color: #1a1204; border-color: transparent; font-weight: 650; }
+button.primary:hover { filter: brightness(1.08); }
+button.danger { color: var(--crit-ink); }
+button:focus-visible, .tab:focus-visible, .chart-hit:focus-visible, th[data-sort]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- alerts ---- */
+.alerts { display: grid; gap: 6px; margin-bottom: 16px; }
+.alert { display: flex; gap: 10px; align-items: center; padding: 8px 12px 8px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--ring); border-left: 3px solid var(--warn); font-size: 13px; }
+.alert .ico { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #1a1204; background: var(--warn); }
+.alert.crit { border-left-color: var(--crit); }
+.alert.crit .ico { background: var(--crit); color: #fff; }
+.alert.info { border-left-color: var(--crystal); }
+.alert.info .ico { background: var(--crystal); }
+.alert .lvl { font-weight: 650; margin-right: 4px; }
+
+/* ---- tabs & range ---- */
+.bar-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--ring); }
+.tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+.tab { border: 0; background: transparent; border-radius: 8px 8px 0 0; padding: 9px 13px 11px; color: var(--muted); font-weight: 550; position: relative; }
+.tab svg { width: 15px; height: 15px; opacity: .8; }
+.tab:hover { background: transparent; color: var(--ink); border: 0; }
+.tab.on { color: var(--ink); }
+.tab.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.tab.on svg { color: var(--accent); opacity: 1; }
+.range { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); padding-bottom: 8px; }
+.range button { padding: 4px 10px; font-size: 12px; border-radius: 999px; background: transparent; }
+.range button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); font-weight: 650; }
+
+/* ---- layout & cards ---- */
+.grid { display: grid; gap: 12px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 12px; }
+.cols-2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+.cols-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.card { background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent 40%), var(--surface); border: 1px solid var(--ring); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); min-width: 0; position: relative; }
+.card h2 { font-size: 12px; font-weight: 700; margin: 0 0 3px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.card h2::before { content: ""; width: 3px; height: 12px; border-radius: 2px; background: var(--accent); }
+.card .sub { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+.mt { margin-top: 12px; }
+.card h2.mt { margin-top: 18px; }
+
+/* ---- KPI tiles ---- */
+.kpi { padding: 14px 16px 12px; overflow: hidden; }
+.kpi .label { color: var(--muted); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; }
+.kpi .value { font-size: 26px; font-weight: 700; letter-spacing: -.01em; margin: 4px 0 2px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kpi .note { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kpi.good .value { color: var(--good-ink); }
+.kpi.crit .value { color: var(--crit-ink); }
+.kpi.accent { box-shadow: var(--shadow), var(--glow); }
+.delta { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--good-ink); background: rgba(12,163,12,0.14); }
+.delta.down { color: var(--crit-ink); background: rgba(208,59,59,0.14); }
+.delta.flat { color: var(--ink-2); background: var(--surface-2); }
+.spark { display: block; width: 100%; height: 30px; margin-top: 8px; }
+
+/* ---- hero & overview ---- */
+.hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+@media (max-width: 860px) { .hero { grid-template-columns: 1fr; } }
+.hero-main { padding: 20px 22px; overflow: hidden; }
+.hero-main::after { content: ""; position: absolute; inset: 0; border-radius: 14px; pointer-events: none; background: radial-gradient(500px 200px at 0% 0%, rgba(229,160,42,0.12), transparent 70%); }
+.hero-label { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+.hero-value { font-size: 44px; font-weight: 700; line-height: 1.05; margin: 6px 0 6px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.hero-row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; color: var(--ink-2); font-size: 13px; }
+.hero-row b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.hero .spark { height: 56px; margin-top: 14px; }
+.race { padding: 18px 20px; }
+.race-track { position: relative; height: 14px; border-radius: 7px; background: var(--surface-3); margin: 26px 0 30px; }
+.race-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; background: linear-gradient(90deg, #b87400, #f0b23e); box-shadow: 0 0 14px rgba(229,160,42,0.35); }
+.race-proj { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; background: repeating-linear-gradient(135deg, rgba(229,160,42,0.35) 0 4px, transparent 4px 8px); }
+.race-mark { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--ink-2); }
+.race-mark span { position: absolute; top: -20px; transform: translateX(-50%); white-space: nowrap; font-size: 11px; color: var(--ink-2); }
+.race-mark.below span { top: auto; bottom: -20px; }
+.race-mark.gold { background: var(--crystal); box-shadow: 0 0 8px var(--crystal); }
+.race-mark.gold span { color: var(--crystal); font-weight: 650; }
+.race-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink-2); }
+.race-legend b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.stat-list { display: grid; gap: 10px; }
+.stat-line { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: 13px; }
+.stat-line .k { color: var(--ink-2); }
+.stat-line .v { font-family: "Oxanium", "Inter", sans-serif; font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+.meter { height: 8px; border-radius: 4px; background: var(--surface-3); overflow: hidden; margin: 8px 0 6px; }
+.meter > i { display: block; height: 100%; background: linear-gradient(90deg, #b87400, #f0b23e); border-radius: 4px; }
+.meter.warn > i { background: var(--warn); }
+.meter.crit > i { background: var(--crit); }
+.meter.teal > i { background: linear-gradient(90deg, #1f8f84, var(--crystal)); }
+
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 13px; }
+.kv .k { color: var(--ink-2); }
+.kv .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.kv .n { color: var(--muted); font-size: 12px; margin-left: 6px; font-weight: 400; }
+
+/* ---- tables ---- */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 7px 9px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+td.l, th.l { text-align: left; }
+th { color: var(--muted); font-weight: 650; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+th[data-sort] { cursor: pointer; user-select: none; }
+th[data-sort]:hover, th.sorted { color: var(--accent); }
+tbody tr { transition: background .1s; }
+tbody tr:hover td { background: var(--surface-2); }
+.tbl-wrap { overflow-x: auto; max-height: 540px; overflow-y: auto; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--ring-2); color: var(--ink-2); font-weight: 600; }
+.tag.crit { color: var(--crit-ink); border-color: currentColor; background: rgba(208,59,59,0.10); }
+.tag.warn { color: var(--warn-ink); border-color: currentColor; background: rgba(250,178,25,0.08); }
+.tag.good { color: var(--good-ink); border-color: currentColor; background: rgba(12,163,12,0.10); }
+.neg { color: var(--crit-ink); }
+.pos { color: var(--good-ink); }
+.dim { color: var(--muted); }
+a { color: var(--crystal); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- charts ---- */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+.chart .baseline { stroke: var(--axis); stroke-width: 1; }
+.chart .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .ref { stroke: var(--crit); stroke-width: 1; stroke-dasharray: 4 3; }
+.chart .ref-label { fill: var(--crit-ink); font-size: 11px; }
+.chart .cross { stroke: var(--axis); stroke-width: 1; }
+.chart-hit { fill: transparent; pointer-events: all; outline: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 14px; height: 2px; border-radius: 1px; }
+.legend i.box { width: 10px; height: 10px; border-radius: 3px; }
+.tip { position: absolute; pointer-events: none; z-index: 5; min-width: 150px; background: var(--surface-3); border: 1px solid var(--ring-2); border-radius: 10px; padding: 8px 10px; font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.4); opacity: 0; transition: opacity .08s; }
+.tip.show { opacity: 1; }
+.tip .d { color: var(--muted); margin-bottom: 4px; }
+.tip .r { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tip .r .nm { color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+.tip .r .nm i { width: 12px; height: 2px; display: inline-block; }
+.tip .r b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.empty { color: var(--muted); font-size: 13px; padding: 22px 0; text-align: center; }
+
+.hbar { display: grid; grid-template-columns: minmax(90px, 160px) 1fr 44px; gap: 8px; align-items: center; font-size: 13px; padding: 4px 0; }
+.hbar .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar .track { height: 10px; background: var(--surface-3); border-radius: 5px; overflow: hidden; }
+.hbar .track i { display: block; height: 100%; background: linear-gradient(90deg, #b87400, #f0b23e); border-radius: 5px; }
+.hbar.held .track i { background: var(--axis); }
+.hbar.held .nm { color: var(--muted); }
+.hbar .ct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; }
+
+/* ---- dialog & forms ---- */
+dialog { border: 1px solid var(--ring-2); border-radius: 16px; padding: 0; background: var(--surface); color: var(--ink); width: min(580px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+dialog::backdrop { background: rgba(0,0,0,.6); backdrop-filter: blur(2px); }
+.dlg-h { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--ring); position: sticky; top: 0; background: var(--surface); z-index: 2; }
+.dlg-h h2 { margin: 0; font-size: 16px; }
+.dlg-b { padding: 14px 18px 18px; }
+.dlg-b h3 { font-size: 11px; margin: 20px 0 8px; color: var(--accent); text-transform: uppercase; letter-spacing: .1em; }
+.dlg-b h3:first-child { margin-top: 0; }
+.field { display: grid; grid-template-columns: 1fr 150px; gap: 10px; align-items: center; margin-bottom: 8px; font-size: 13px; }
+.field label { color: var(--ink-2); }
+input[type=text], input[type=password], input[type=number], textarea {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--plane);
+  border: 1px solid var(--ring-2); border-radius: 9px; padding: 7px 9px; width: 100%; min-width: 0;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+textarea { min-height: 80px; resize: vertical; font-family: ui-monospace, monospace; font-size: 11px; }
+.row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.help { color: var(--muted); font-size: 12px; margin: 4px 0 8px; }
+.msg { font-size: 12px; margin-top: 6px; }
+.msg.ok { color: var(--good-ink); }
+.msg.err { color: var(--crit-ink); }
+
+.onboard { max-width: 640px; margin: 48px auto; }
+.onboard .card { padding: 26px; }
+.onboard h2 { font-size: 18px; margin: 0 0 6px; text-transform: none; letter-spacing: 0; }
+.onboard h2::before { display: none; }
+.onboard p { color: var(--ink-2); margin: 0 0 12px; }
+.onboard .opt { border-top: 1px solid var(--ring); padding-top: 16px; margin-top: 16px; }
+.key-row { display: flex; gap: 8px; }
+.loading { opacity: .55; transition: opacity .15s; }
+@media (max-width: 560px) {
+  .field { grid-template-columns: 1fr; gap: 4px; }
+  .kpi .value { font-size: 22px; }
+  .hero-value { font-size: 34px; }
+  .brand h1 { font-size: 18px; }
+  .tab { padding: 8px 9px 10px; }
+  .tab .tl { display: none; }
+  .tab.on .tl { display: inline; }
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oxanium:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<dialog id="settings">
+  <div class="dlg-h"><h2>Settings</h2><button id="set-close" aria-label="Close settings">Close</button></div>
+  <div class="dlg-b">
+    <h3>API key</h3>
+    <div class="help">Stored in this browser only and sent nowhere except api.torn.com. Needs company access: profile, detailed, employees, stock, news.</div>
+    <div class="key-row"><input id="set-key" type="password" autocomplete="off" spellcheck="false" placeholder="unchanged"><button id="set-key-save">Save key</button></div>
+    <div class="row-btns"><button id="set-key-forget" class="danger">Forget key</button></div>
+    <div class="msg" id="set-key-msg"></div>
+
+    <h3>Script backup</h3>
+    <div class="help">In the userscript: settings, Advanced, download backup. Drop that file here to load its history and training ledger. The API key inside it is thrown away, never stored.</div>
+    <div class="row-btns">
+      <button id="imp-file">Choose backup file</button>
+      <input id="imp-input" type="file" accept=".json,application/json" hidden>
+    </div>
+    <textarea id="imp-text" placeholder="...or paste the backup JSON here"></textarea>
+    <div class="row-btns"><button id="imp-paste">Import pasted JSON</button></div>
+    <div class="msg" id="imp-msg"></div>
+
+    <h3>Numbers</h3>
+    <div class="field"><label for="s-share">Your share of profit (%)</label><input id="s-share" type="number" min="0" max="100" step="0.5"></div>
+    <div class="field"><label for="s-cap">Warehouse capacity (units)</label><input id="s-cap" type="number" min="0" step="100"></div>
+    <div class="field"><label for="s-add">Flag addiction at</label><input id="s-add" type="number" max="0" step="1"></div>
+    <div class="field"><label for="s-idle">Skip training after N idle days</label><input id="s-idle" type="number" min="1" max="30" step="1"></div>
+    <div class="field"><label for="s-wz">Zero pay after N idle days</label><input id="s-wz" type="number" min="1" max="60" step="1"></div>
+    <div class="field"><label for="s-mult">Wage multiplier (x highest stat)</label><input id="s-mult" type="number" min="1" max="60" step="0.5"></div>
+    <div class="field"><label for="s-ee">Merit bonus per level ($)</label><input id="s-ee" type="number" min="0" step="5000"></div>
+    <div class="field"><label for="s-stock">Stock line to report (name contains)</label><input id="s-stock" type="text" placeholder="first line"></div>
+    <div class="row-btns"><button id="s-save" class="primary">Save numbers</button></div>
+    <div class="msg" id="s-msg"></div>
+
+    <h3>Data</h3>
+    <div class="row-btns">
+      <button id="exp-json">Export dashboard data</button>
+      <button id="exp-csv">Export history CSV</button>
+      <button id="theme-btn">Theme: dark</button>
+      <button id="wipe" class="danger">Erase everything</button>
+    </div>
+    <div class="help">Exports never include the API key.</div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+'use strict';
+// =====================================================================
+// Company Dashboard - a standalone companion to "Torn - Company Daily
+// Dashboard" (userscript 5.31.0). Pulls the same five company selections
+// the script does, banks its own daily history, and can be seeded from the
+// script's backup file. Read-only against Torn: it performs no game action.
+// =====================================================================
+
+const STORE_KEY = 'cdd_v1';
+const THEME_KEY = 'cdd_theme';
+const CACHE_MIN = 60;          // same as the script: trust a pull for an hour
+const MIN_REFRESH_S = 60;      // manual refresh floor
+const HISTORY_DAYS = 60;       // a little longer than the script's 40
+const SEEN_EVENTS = 600;
+const NEW_HIRE_DAYS = 3;
+const SAL = { round: 25000, min: 50000, max: 4000000 };
+const DEFAULTS = {
+  directorShare: 35, warehouseCap: 10000, addictionFlag: -8,
+  idleSkipDays: 3, wageZeroDays: 3, wageMult: 20, eePerLevel: 50000, stockMatch: '',
+  // Seats filled strictly in this order, each by the best remaining candidate for it.
+  optPriority: '3 Sales Executive\n1 Safety Inspector\n2 Secretary\n1 Site Manager\n1 Sales Executive\nlast: Mill Operator'
+};
+const OLD_PRIORITY = '3 Sales Executive\n1 Safety Inspector\n2 Secretary\n1 Site Manager\n1 Sales Executive';
+// Fallback requirement table (Torn's published mining seats). Replaced by the company's own
+// table from torn/?selections=companies, or by the one carried in a script backup.
+const MINING_POSITIONS = [
+  { name: 'Sales Executive',    req: { man: 0,     int: 83000, end: 41500 } },
+  { name: 'Mill Operator',      req: { man: 75000, int: 0,     end: 37500 } },
+  { name: 'Production Foreman', req: { man: 39500, int: 0,     end: 79000 } },
+  { name: 'Mine Engineer',      req: { man: 0,     int: 81000, end: 40500 } },
+  { name: 'Electrician',        req: { man: 39000, int: 0,     end: 78000 } },
+  { name: 'Safety Inspector',   req: { man: 47500, int: 95000, end: 0     } },
+  { name: 'Site Manager',       req: { man: 0,     int: 97500, end: 48750 } },
+  { name: 'Secretary',          req: { man: 0,     int: 39000, end: 78000 } }
+];
+
+// ---------------------------------------------------------------------
+// Storage. Every read and write is guarded: a file:// page in a private
+// window, or a browser with site data blocked, has no localStorage at all.
+// ---------------------------------------------------------------------
+function load() {
+  try { const raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : {}; }
+  catch (e) { return {}; }
+}
+let saveFailed = false;
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); saveFailed = false; }
+  catch (e) { saveFailed = true; }
+}
+
+const stored = load();
+const state = Object.assign({
+  apiKey: '',
+  settings: Object.assign({}, DEFAULTS),
+  data: null,            // latest digest, same shape the script's digest() produces
+  pulledAt: 0,
+  history: {},           // YYYY-MM-DD -> record
+  trains: null,
+  savedWages: {},
+  lastError: '',
+  newsError: '',
+  importedAt: 0,
+  importedSavedAt: 0,
+  posCache: null,        // {type, name, list} - this company type's seats and requirements
+  posError: '',
+  bench: null,
+  benchError: '',
+  tab: 'ov',
+  range: 14,
+  staffSort: { key: 'name', dir: 1 }
+}, stored);
+state.settings = Object.assign({}, DEFAULTS, state.settings || {});
+// Upgrade the untouched first default to the one with the fill-last rule.
+if (state.settings.optPriority === OLD_PRIORITY) state.settings.optPriority = DEFAULTS.optPriority;
+if (!state.history || typeof state.history !== 'object') state.history = {};
+if (!state.savedWages || typeof state.savedWages !== 'object') state.savedWages = {};
+// One-time: open the new Overview for installs that remember another tab.
+if (!state.ovIntro) { state.tab = 'ov'; state.ovIntro = true; }
+
+function ledger() {
+  if (!state.trains || typeof state.trains !== 'object') state.trains = {};
+  const t = state.trains;
+  ['auto', 'manual', 'skips', 'baseline', 'skip'].forEach(k => {
+    if (!t[k] || typeof t[k] !== 'object') t[k] = {};
+  });
+  if (!Array.isArray(t.seen)) t.seen = [];
+  if (!t.since) t.since = completedWorkingDay();
+  return t;
+}
+
+// ---------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fin = v => typeof v === 'number' && Number.isFinite(v);
+const num = n => fin(n) ? Math.round(n).toLocaleString('en-US') : '—';
+const money = n => fin(n) ? (n < 0 ? '-$' : '$') + Math.round(Math.abs(n)).toLocaleString('en-US') : '—';
+const pct = (n, d) => (fin(n) && fin(d) && d) ? (100 * n / d).toFixed(1) + '%' : '—';
+const signed = n => fin(n) ? (n > 0 ? '+' : '') + num(n) : '—';
+function compact(n) {
+  if (!fin(n)) return '—';
+  const a = Math.abs(n), s = n < 0 ? '-' : '';
+  if (a >= 1e9) return s + '$' + (a / 1e9).toFixed(2) + 'B';
+  if (a >= 1e6) return s + '$' + (a / 1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return s + '$' + (a / 1e3).toFixed(0) + 'k';
+  return s + '$' + Math.round(a);
+}
+// Tile-sized money: full figure up to $10M, then $69.03M, with the exact amount on hover.
+function moneyTile(n) {
+  if (!fin(n)) return '—';
+  if (Math.abs(n) < 1e7) return money(n);
+  return '<span title="' + money(n) + '">' + (n < 0 ? '-$' : '$') + (Math.abs(n) / 1e6).toFixed(2) + 'M</span>';
+}
+function compactNum(n) {
+  if (!fin(n)) return '—';
+  const a = Math.abs(n), s = n < 0 ? '-' : '';
+  if (a >= 1e6) return s + (a / 1e6).toFixed(1) + 'M';
+  if (a >= 1e4) return s + (a / 1e3).toFixed(0) + 'k';
+  return s + Math.round(a).toLocaleString('en-US');
+}
+function reported(v) {
+  if (v === null || v === undefined || v === '') return NaN;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+// The working day closes at 18:00 TCT (UTC). Before that, the latest complete day is yesterday.
+function completedWorkingDay(now) {
+  const d = new Date(now || Date.now());
+  if (d.getUTCHours() < 18) d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+function shiftDay(iso, delta) {
+  const d = new Date(iso + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+const shortDay = iso => new Date(iso + 'T12:00:00Z')
+  .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const longDay = iso => new Date(iso + 'T12:00:00Z')
+  .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+function ago(ts) {
+  if (!ts) return 'never';
+  const m = Math.floor((Date.now() - ts) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 48) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+function highestStat(st) {
+  return Math.ceil(Math.max(Number(st.man) || 0, Number(st.int) || 0, Number(st.end) || 0) / 1000) * 1000;
+}
+function targetSalary(st, merits) {
+  const s = state.settings;
+  const raw = highestStat(st) * s.wageMult + Math.min(10, Math.max(0, Number(merits) || 0)) * s.eePerLevel;
+  const c = Math.min(SAL.max, Math.max(SAL.min, raw));
+  return Math.floor(c / SAL.round) * SAL.round;
+}
+
+// ---------------------------------------------------------------------
+// Torn API. Selections one at a time, as the script does: Torn fails a
+// combined call outright if any one selection exceeds the key's access.
+// ---------------------------------------------------------------------
+const API_ERRORS = {
+  2: 'API key is not valid.',
+  5: 'Too many API requests - try again in a minute.',
+  7: "This key's owner is not the company director (error 7).",
+  16: 'Key access level is too low (error 16).'
+};
+async function getJson(url) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const r = await fetch(url, { credentials: 'omit', signal: ctl.signal, cache: 'no-store' });
+    const txt = await r.text();
+    try { return JSON.parse(txt); } catch (e) { throw new Error('Unreadable API response'); }
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Torn API timed out');
+    if (e.message === 'Unreadable API response') throw e;
+    throw new Error('Network error contacting the Torn API');
+  } finally { clearTimeout(t); }
+}
+async function selection(sel) {
+  const url = 'https://api.torn.com/company/?selections=' + sel +
+    '&comment=CompanyDash&key=' + encodeURIComponent(state.apiKey);
+  const data = await getJson(url);
+  if (data && data.error) {
+    const c = data.error.code;
+    throw new Error(API_ERRORS[c] || (data.error.error + ' (error ' + c + ')'));
+  }
+  return data;
+}
+
+// Same reads as the script's digest(), so the numbers agree field for field.
+function digest(profile, detailed, employees, stockRes) {
+  const prof = profile.company || profile.company_profile || profile || {};
+  const det = detailed.company_detailed || detailed.detailed || {};
+  const roster = employees.company_employees || employees.employees || {};
+  const stocks = stockRes.company_stock || stockRes.stock || {};
+
+  const keys = Object.keys(stocks);
+  const match = String(state.settings.stockMatch || '').toLowerCase();
+  const key = (match ? keys.find(k => k.toLowerCase().includes(match)) : null) || keys[0] || null;
+  const s = (key ? stocks[key] : null) || {};
+  const stockFields = ['sold_worth', 'sold_amount', 'in_stock', 'price', 'rrp', 'cost'];
+  if (key && !stockFields.some(f => s[f] != null)) {
+    throw new Error('The stock line "' + key + '" carried none of the expected fields - Torn has probably renamed them.');
+  }
+
+  const list = Object.entries(roster).map(([id, e]) => Object.assign({ id: String(id) }, e));
+  if (!list.length) throw new Error('No employees returned by the API.');
+  const nowSec = Date.now() / 1000;
+  let effTotal = 0, addiction = 0, inactivity = 0;
+  const staff = list.map(e => {
+    const eff = e.effectiveness || {};
+    const total = Number(eff.total) || 0;
+    const add = Number(eff.addiction) || 0;
+    const inact = Number(eff.inactivity) || 0;
+    effTotal += total; addiction += add; inactivity += inact;
+    const ts = e.last_action && Number(e.last_action.timestamp);
+    const tenure = Number(e.days_in_company != null ? e.days_in_company : e.days);
+    const st = {
+      man: Number(e.manual_labor != null ? e.manual_labor : e.manual) || 0,
+      int: Number(e.intelligence) || 0,
+      end: Number(e.endurance) || 0
+    };
+    return {
+      id: e.id, name: String(e.name || e.username || ('#' + e.id)),
+      position: String(e.position || ''), eff: total, addiction: add, inactivity: inact,
+      daysInCompany: Number.isFinite(tenure) ? tenure : null,
+      wage: Number(e.wage) || 0, stats: st,
+      merits: Number(eff.merits) || 0,
+      settled: eff.settled_in == null ? null : Number(eff.settled_in),
+      workingStats: Number.isFinite(Number(eff.working_stats)) && eff.working_stats != null ? Number(eff.working_stats) : null,
+      hasStats: st.man > 0 || st.int > 0 || st.end > 0,
+      daysIdle: Number.isFinite(ts) && ts > 0 ? Math.floor((nowSec - ts) / 86400) : null
+    };
+  });
+  const wages = staff.reduce((t, p) => t + p.wage, 0);
+  const income = Number(s.sold_worth) || 0;
+  const ads = Number(det.advertising_budget) || 0;
+  const profit = income - wages - ads;
+  return {
+    day: completedWorkingDay(), stockName: key,
+    income, wages, ads, profit,
+    margin: income ? profit / income : null,
+    sold: Number(s.sold_amount) || 0, inStock: Number(s.in_stock) || 0,
+    price: Number(s.price) || 0, rrp: Number(s.rrp) || 0,
+    companyName: String(prof.name || '') || null,
+    companyType: Number(prof.company_type) || null,
+    companyId: Number(prof.ID) || null,
+    rating: Number(prof.rating) || null,
+    customers: reported(prof.daily_customers),
+    hired: Number(prof.employees_hired) || list.length,
+    capacity: Number(prof.employees_capacity) || null,
+    bank: reported(det.company_bank), efficiency: reported(det.efficiency),
+    environment: reported(det.environment), popularity: reported(det.popularity),
+    trains: reported(det.trains_available),
+    effTotal, addiction, inactivity, staff
+  };
+}
+
+// Bank one record per working day. First write wins, and a day that came in
+// from the script's backup is never touched: the script holds the wage and ad
+// rates the day actually began on, and this page only ever sees live ones.
+function bankDay(d) {
+  const H = state.history;
+  const prev = H[shiftDay(d.day, -1)];
+  if (prev && fin(prev.stock)) { d.surplus = d.inStock - prev.stock; d.created = d.sold + d.surplus; }
+  else { d.surplus = null; d.created = null; }
+
+  const have = H[d.day];
+  if (have && fin(have.income) && fin(have.wages) && fin(have.ads) && fin(have.profit)) {
+    d.income = have.income; d.wages = have.wages; d.ads = have.ads; d.profit = have.profit;
+    d.margin = d.income ? d.profit / d.income : null;
+    if (have.src !== 'dash') d.fromScript = true;
+    if (have.created == null && d.created != null) { have.created = d.created; have.surplus = d.surplus; }
+    return d;
+  }
+  const rec = {
+    stock: d.inStock, sold: d.sold, income: d.income, wages: d.wages, ads: d.ads,
+    profit: d.profit, created: d.created, surplus: d.surplus, eff: d.effTotal,
+    pen: d.addiction + d.inactivity, efficiency: d.efficiency, environment: d.environment,
+    popularity: d.popularity, customers: d.customers, price: d.price, rrp: d.rrp,
+    src: 'dash', live: true
+  };
+  // JSON has no NaN; keep "not reported" as null so it round-trips.
+  Object.keys(rec).forEach(k => { if (typeof rec[k] === 'number' && !Number.isFinite(rec[k])) rec[k] = null; });
+  H[d.day] = rec;
+  const cutoff = shiftDay(d.day, -HISTORY_DAYS);
+  Object.keys(H).forEach(k => { if (k < cutoff) delete H[k]; });
+  return d;
+}
+
+const TRAINED_RE = /has been trained by the director/i;
+const XID_RE = /(?:XID=|profiles\/)(\d+)/i;
+function ingestNews(res) {
+  const items = res.company_news || res.news || {};
+  const led = ledger();
+  const seen = new Set(led.seen);
+  let added = 0, unreadable = 0;
+  Object.entries(items).forEach(([id, item]) => {
+    if (seen.has(id)) return;
+    const text = String((item && (item.news || item.text)) || '');
+    if (!TRAINED_RE.test(text)) { seen.add(id); led.seen.push(id); return; }
+    const m = text.match(XID_RE);
+    if (!m) { unreadable++; return; }
+    led.auto[m[1]] = (led.auto[m[1]] || 0) + 1;
+    seen.add(id); led.seen.push(id); added++;
+  });
+  if (led.seen.length > SEEN_EVENTS) led.seen = led.seen.slice(-SEEN_EVENTS);
+  if (unreadable) throw new Error(unreadable + ' training event(s) could not be read - Torn may have changed the news markup.');
+  return added;
+}
+
+let pulling = false, lastAttempt = 0;
+async function pull(force) {
+  if (!state.apiKey || pulling) return;
+  const age = Date.now() - state.pulledAt;
+  const fresh = age >= 0 && age < CACHE_MIN * 60000;
+  if (!force && fresh && state.data) return;
+  if (force && Date.now() - lastAttempt < MIN_REFRESH_S * 1000) {
+    flash('Refreshed a moment ago - give it a minute.');
+    return;
+  }
+  pulling = true; lastAttempt = Date.now(); render();
+  try {
+    const profile = await selection('profile');
+    try {
+      const p0 = profile.company || profile.company_profile || profile || {};
+      await resolvePositions(Number(p0.company_type) || null);
+    } catch (e) { state.posError = 'Could not load the seat table from Torn (' + (e.message || e) + ') - using the built-in mining table.'; }
+    const detailed = await selection('detailed');
+    const employees = await selection('employees');
+    const stockRes = await selection('stock');
+    const d = bankDay(digest(profile, detailed, employees, stockRes));
+    d.share = d.profit * (state.settings.directorShare / 100);
+    d.staff.forEach(p => { if (p.wage > 0) state.savedWages[p.id] = p.wage; });
+    state.data = d;
+    state.pulledAt = Date.now();
+    state.lastError = '';
+    try { ingestNews(await selection('news')); state.newsError = ''; }
+    catch (e) { state.newsError = e.message || String(e); }
+    save();
+  } catch (e) {
+    state.lastError = e.message || String(e);
+    save();
+  } finally {
+    pulling = false; render();
+  }
+}
+
+// ---------------------------------------------------------------------
+// Import the script's backup. It is JSON.stringify(state) from the script,
+// which INCLUDES the API key - so fields are picked, never copied wholesale,
+// and apiKey is never read.
+// ---------------------------------------------------------------------
+const REC_FIELDS = ['stock', 'sold', 'income', 'wages', 'ads', 'profit', 'created', 'surplus',
+  'eff', 'pen', 'efficiency', 'environment', 'popularity', 'customers', 'price', 'rrp'];
+function importBackup(text) {
+  let obj;
+  try { obj = JSON.parse(text); } catch (e) { throw new Error('That is not valid JSON.'); }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error('That does not look like a script backup.');
+  const hadKey = typeof obj.apiKey === 'string' && obj.apiKey.length > 0;
+  if (!obj.history && !obj.trains && !obj.data) throw new Error('No history, ledger or pull found in that file.');
+
+  let days = 0;
+  if (obj.history && typeof obj.history === 'object') {
+    Object.keys(obj.history).forEach(day => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+      const r = obj.history[day];
+      if (!r || typeof r !== 'object') return;
+      const rec = {};
+      REC_FIELDS.forEach(f => { const v = Number(r[f]); rec[f] = (r[f] != null && Number.isFinite(v)) ? v : null; });
+      if (r.live) rec.live = true;
+      if (r.fix && typeof r.fix === 'object') rec.fixed = true;
+      state.history[day] = rec;      // the script's figure wins
+      days++;
+    });
+  }
+
+  let trainees = 0;
+  const bt = obj.trains;
+  if (bt && typeof bt === 'object') {
+    const led = ledger();
+    Object.keys(bt.auto || {}).forEach(id => {
+      const v = Number(bt.auto[id]) || 0;
+      if (v > (led.auto[id] || 0)) led.auto[id] = v;
+      trainees++;
+    });
+    ['manual', 'skips', 'baseline', 'skip'].forEach(k => {
+      if (bt[k] && typeof bt[k] === 'object') {
+        led[k] = {};
+        Object.keys(bt[k]).forEach(id => {
+          const v = bt[k][id];
+          led[k][String(id)] = k === 'skip' ? !!v : (Number(v) || 0);
+        });
+      }
+    });
+    if (Array.isArray(bt.seen)) {
+      const have = new Set(led.seen);
+      bt.seen.forEach(id => { if (!have.has(String(id))) { led.seen.push(String(id)); have.add(String(id)); } });
+      led.seen = led.seen.slice(-SEEN_EVENTS);
+    }
+    if (typeof bt.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(bt.since) && bt.since < led.since) led.since = bt.since;
+  }
+
+  if (obj.savedWages && typeof obj.savedWages === 'object') {
+    Object.keys(obj.savedWages).forEach(id => {
+      const v = Number(obj.savedWages[id]);
+      if (Number.isFinite(v) && v > 0) state.savedWages[String(id)] = v;
+    });
+  }
+
+  if (obj.posCache && typeof obj.posCache === 'object') {
+    const list = cleanPositions(obj.posCache.list);
+    if (list) state.posCache = { type: Number(obj.posCache.type) || null, name: obj.posCache.name ? String(obj.posCache.name) : null, list };
+  }
+
+  const map = { directorShare: 'directorShare', warehouseCap: 'warehouseCap', addictionFlag: 'addictionFlag',
+    idleSkipDays: 'idleSkipDays', wageZeroDays: 'wageZeroDays', wageMult: 'wageMult', eePerLevel: 'eePerLevel' };
+  Object.keys(map).forEach(k => { const v = Number(obj[k]); if (Number.isFinite(v)) state.settings[map[k]] = v; });
+
+  // The script's last pull is a complete digest in the same shape as ours. Use it
+  // when it is newer than whatever this page last pulled.
+  let usedPull = false;
+  if (obj.data && typeof obj.data === 'object' && Array.isArray(obj.data.staff) &&
+      Number(obj.pulledAt) > (state.pulledAt || 0)) {
+    state.data = sanitizeDigest(obj.data);
+    state.pulledAt = Number(obj.pulledAt);
+    usedPull = true;
+  }
+  if (state.data) {
+    const r = state.history[state.data.day];
+    if (r && fin(r.profit)) {
+      Object.assign(state.data, { income: r.income, wages: r.wages, ads: r.ads, profit: r.profit });
+      state.data.margin = r.income ? r.profit / r.income : null;
+      state.data.fromScript = true;
+    }
+    if (r && r.created != null) { state.data.created = r.created; state.data.surplus = r.surplus; }
+    state.data.share = state.data.profit * (state.settings.directorShare / 100);
+  }
+  state.importedAt = Date.now();
+  state.importedSavedAt = Number(obj.savedAt) || 0;
+  save();
+  return { days, trainees, hadKey, usedPull };
+}
+
+// A digest arriving from a file is untrusted: coerce every field to the type we render.
+function sanitizeDigest(o) {
+  const n = v => { const x = Number(v); return (v != null && Number.isFinite(x)) ? x : NaN; };
+  const d = {};
+  ['income', 'wages', 'ads', 'profit', 'sold', 'inStock', 'price', 'rrp', 'effTotal', 'addiction',
+   'inactivity', 'hired', 'capacity', 'rating', 'customers', 'bank', 'efficiency', 'environment',
+   'popularity', 'trains', 'created', 'surplus'].forEach(k => { d[k] = n(o[k]); });
+  ['income', 'wages', 'ads', 'profit', 'sold', 'inStock', 'effTotal', 'addiction', 'inactivity'].forEach(k => { if (!fin(d[k])) d[k] = 0; });
+  if (!fin(d.created)) d.created = null;
+  if (!fin(d.surplus)) d.surplus = null;
+  d.margin = d.income ? d.profit / d.income : null;
+  d.day = /^\d{4}-\d{2}-\d{2}$/.test(o.day) ? o.day : completedWorkingDay();
+  d.companyName = o.companyName ? String(o.companyName) : null;
+  d.companyType = Number(o.companyType) || null;
+  d.companyId = Number(o.companyId) || null;
+  d.stockName = o.stockName ? String(o.stockName) : null;
+  d.staff = (o.staff || []).map(p => ({
+    id: String(p.id), name: String(p.name || ('#' + p.id)), position: String(p.position || ''),
+    eff: Number(p.eff) || 0, addiction: Number(p.addiction) || 0, inactivity: Number(p.inactivity) || 0,
+    daysInCompany: Number.isFinite(Number(p.daysInCompany)) && p.daysInCompany != null ? Number(p.daysInCompany) : null,
+    daysIdle: Number.isFinite(Number(p.daysIdle)) && p.daysIdle != null ? Number(p.daysIdle) : null,
+    wage: Number(p.wage) || 0, merits: Number(p.merits) || 0,
+    stats: { man: Number(p.stats && p.stats.man) || 0, int: Number(p.stats && p.stats.int) || 0, end: Number(p.stats && p.stats.end) || 0 },
+    hasStats: !!p.hasStats, settled: p.settled == null ? null : Number(p.settled),
+    workingStats: p.workingStats != null && Number.isFinite(Number(p.workingStats)) ? Number(p.workingStats) : null
+  }));
+  return d;
+}
+
+// ---------------------------------------------------------------------
+// Derived views
+// ---------------------------------------------------------------------
+function daysInRange() {
+  const end = state.data ? state.data.day : (Object.keys(state.history).sort().pop() || completedWorkingDay());
+  const all = Object.keys(state.history).sort();
+  let n = state.range;
+  if (n === 0) {
+    if (!all.length) return [];
+    const first = all[0];
+    n = Math.round((Date.parse(end + 'T00:00:00Z') - Date.parse(first + 'T00:00:00Z')) / 86400000) + 1;
+    n = Math.max(1, Math.min(n, HISTORY_DAYS));
+  }
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) out.push(shiftDay(end, -i));
+  return out;
+}
+const rec = day => state.history[day] || null;
+const series = (days, f) => days.map(d => { const r = rec(d); return r && fin(r[f]) ? r[f] : null; });
+
+function rotation(d) {
+  const led = ledger();
+  const s = state.settings;
+  const people = (d.staff || []).map(p => {
+    const auto = led.auto[p.id] || 0, manual = led.manual[p.id] || 0;
+    const skips = led.skips[p.id] || 0, baseline = led.baseline[p.id] || 0;
+    const tooNew = p.daysInCompany != null && p.daysInCompany < NEW_HIRE_DAYS;
+    const idle = p.daysIdle != null && p.daysIdle >= s.idleSkipDays;
+    const override = led.skip[p.id];
+    const total = Math.max(0, auto + manual);
+    return {
+      id: p.id, name: p.name, position: p.position, daysIdle: p.daysIdle, tooNew, idle,
+      total, turns: total + skips + baseline,
+      skipped: override === undefined ? (tooNew || idle) : override,
+      byHand: override !== undefined
+    };
+  });
+  return {
+    active: people.filter(p => !p.skipped).sort((a, b) => a.turns - b.turns || a.name.localeCompare(b.name)),
+    held: people.filter(p => p.skipped).sort((a, b) => a.name.localeCompare(b.name))
+  };
+}
+
+function priceLadder(days) {
+  const by = new Map();
+  days.forEach(day => {
+    const r = rec(day);
+    if (!r || !(r.price > 0) || !fin(r.sold) || !fin(r.profit)) return;
+    if (!by.has(r.price)) by.set(r.price, { price: r.price, rrp: r.rrp || 0, days: 0, sold: 0, profit: 0 });
+    const b = by.get(r.price); b.days++; b.sold += r.sold; b.profit += r.profit;
+  });
+  const rows = [...by.values()].map(b => Object.assign(b, { soldPer: b.sold / b.days, profitPer: b.profit / b.days }))
+    .sort((a, b) => a.price - b.price);
+  const solid = rows.filter(r => r.days >= 2);
+  const best = solid.length ? solid.reduce((a, b) => b.profitPer > a.profitPer ? b : a) : null;
+  return { rows, best };
+}
+
+function alerts(d) {
+  const out = [];
+  const s = state.settings;
+  if (saveFailed) out.push({ level: 'crit', text: 'This browser will not let the page save - history will be lost on reload.' });
+  if (state.lastError) out.push({ level: 'warn', text: state.lastError });
+  if (state.newsError) out.push({ level: 'warn', text: 'Training feed: ' + state.newsError });
+  if (state.pulledAt && Date.now() - state.pulledAt > CACHE_MIN * 2 * 60000) {
+    out.push({ level: 'warn', text: 'Figures are ' + ago(state.pulledAt).replace(' ago', '') + ' old' + (state.apiKey ? '' : ' - add an API key for live data') + '.' });
+  }
+  if (!d) return out;
+  const cap = s.warehouseCap;
+  if (cap && d.inStock >= cap) out.push({ level: 'crit', text: 'Warehouse is full - production is being wasted.' });
+  else if (cap && d.surplus > 0) {
+    const days = Math.round((cap - d.inStock) / d.surplus);
+    if (days <= 3) out.push({ level: 'crit', text: 'Warehouse full in ' + days + (days === 1 ? ' day.' : ' days.') });
+    else if (days <= 7) out.push({ level: 'warn', text: 'Warehouse full in ' + days + ' days.' });
+  } else if (d.surplus < 0 && d.inStock > 0) {
+    const days = Math.round(d.inStock / -d.surplus);
+    if (days <= 3) out.push({ level: 'warn', text: 'Stock runs out in ' + days + (days === 1 ? ' day.' : ' days.') });
+  }
+  if (fin(d.trains) && fin(d.rating)) {
+    if (d.trains >= 20) out.push({ level: 'crit', text: 'Trains at the 20 cap - daily allocation is being lost.' });
+    else if (d.trains + d.rating > 20) out.push({ level: 'warn', text: d.trains + ' trains held (as of the last pull) - spend some or lose them tomorrow.' });
+  }
+  if (d.capacity && d.hired < d.capacity) {
+    const free = d.capacity - d.hired;
+    out.push({ level: 'warn', text: free + (free === 1 ? ' slot' : ' slots') + ' unfilled.' });
+  }
+  const adj = wageActions(d).length;
+  if (adj) out.push({ level: 'warn', text: adj + ' wage ' + (adj === 1 ? 'adjustment' : 'adjustments') + ' suggested - see Staff.' });
+  const flagged = (d.staff || []).filter(p => p.addiction <= s.addictionFlag).length;
+  if (flagged) out.push({ level: 'warn', text: flagged + ' employee' + (flagged === 1 ? '' : 's') + ' at or past the addiction flag.' });
+  return out;
+}
+function wageActions(d) {
+  const z = state.settings.wageZeroDays;
+  const out = [];
+  (d.staff || []).forEach(p => {
+    if (p.daysIdle != null && p.daysIdle >= z && p.wage > 0) out.push({ id: p.id, kind: 'zero' });
+    else if (p.daysIdle != null && p.daysIdle < z && p.wage === 0 && state.savedWages[p.id] > 0) out.push({ id: p.id, kind: 'restore', to: state.savedWages[p.id] });
+  });
+  return out;
+}
+
+// ---------------------------------------------------------------------
+// Charts: hand-rolled SVG, one y-axis each, crosshair + tooltip on hover
+// and on keyboard focus (arrow keys walk the days).
+// ---------------------------------------------------------------------
+const SVGNS = 'http://www.w3.org/2000/svg';
+function niceTicks(lo, hi, count) {
+  if (lo === hi) { const pad = Math.abs(lo) * 0.1 || 1; lo -= pad; hi += pad; }
+  const span = hi - lo;
+  const step0 = span / Math.max(1, count);
+  const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const err = step0 / mag;
+  const step = (err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1) * mag;
+  const start = Math.floor(lo / step) * step, end = Math.ceil(hi / step) * step;
+  const ticks = [];
+  for (let v = start; v <= end + step / 2; v += step) ticks.push(Math.abs(v) < step / 1e6 ? 0 : v);
+  return ticks;
+}
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(SVGNS, tag);
+  Object.keys(attrs || {}).forEach(k => e.setAttribute(k, attrs[k]));
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function legendHtml(items, box) {
+  return '<div class="legend">' + items.map(s =>
+    '<span><i class="' + (box ? 'box' : '') + '" style="background:' + s.color + '"></i>' + esc(s.label) + '</span>').join('') + '</div>';
+}
+function tooltip(host) {
+  let t = host.querySelector('.tip');
+  if (!t) { t = document.createElement('div'); t.className = 'tip'; host.appendChild(t); }
+  return t;
+}
+function fillTip(t, title, rows) {
+  t.textContent = '';
+  const d = document.createElement('div'); d.className = 'd'; d.textContent = title; t.appendChild(d);
+  rows.forEach(r => {
+    const row = document.createElement('div'); row.className = 'r';
+    const nm = document.createElement('span'); nm.className = 'nm';
+    const k = document.createElement('i'); k.style.background = r.color || 'transparent';
+    nm.appendChild(k); nm.appendChild(document.createTextNode(r.label));
+    const b = document.createElement('b'); b.textContent = r.value;
+    row.appendChild(nm); row.appendChild(b); t.appendChild(row);
+  });
+}
+function placeTip(host, t, x, y) {
+  const w = host.clientWidth, tw = t.offsetWidth || 160;
+  let left = x + 14;
+  if (left + tw > w) left = x - tw - 14;
+  t.style.left = Math.max(0, left) + 'px';
+  t.style.top = Math.max(0, y - 10) + 'px';
+}
+
+/**
+ * Line chart. series: [{label, color, vals}] aligned to `days`.
+ * Gaps stay gaps: a missing day breaks the line rather than bridging it.
+ */
+function lineChart(host, days, list, fmt, opts) {
+  opts = opts || {};
+  host.textContent = '';
+  const present = list.flatMap(s => s.vals.filter(fin));
+  if (!present.length) { host.innerHTML = '<div class="empty">No banked days in this range yet.</div>'; return; }
+  if (list.length > 1) host.insertAdjacentHTML('beforeend', legendHtml(list));
+  const box = document.createElement('div'); box.className = 'chart'; host.appendChild(box);
+  const W = Math.max(280, box.clientWidth || host.clientWidth || 600), H = opts.height || 200;
+  const L = 58, R = 14, T = 10, B = 24;
+  let lo = Math.min(...present), hi = Math.max(...present);
+  if (opts.ref != null) { lo = Math.min(lo, opts.ref); hi = Math.max(hi, opts.ref); }
+  if (opts.zero) lo = Math.min(0, lo);
+  const ticks = niceTicks(lo, hi, 4);
+  lo = ticks[0]; hi = ticks[ticks.length - 1];
+  const n = days.length;
+  const x = i => n === 1 ? L + (W - L - R) / 2 : L + i * (W - L - R) / (n - 1);
+  const y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo || 1));
+  const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': opts.aria || 'chart' }, box);
+  ticks.forEach(v => {
+    el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: v === 0 ? 'baseline' : 'gridline' }, svg);
+    const tx = el('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick' }, svg);
+    tx.textContent = fmt.axis(v);
+  });
+  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 64))));
+  days.forEach((d, i) => {
+    if (i % every && i !== n - 1) return;
+    if (i !== n - 1 && n - 1 - i < every) return;
+    const tx = el('text', { x: x(i), y: H - 6, 'text-anchor': 'middle', class: 'tick' }, svg);
+    tx.textContent = shortDay(d);
+  });
+  if (opts.ref != null) {
+    el('line', { x1: L, x2: W - R, y1: y(opts.ref), y2: y(opts.ref), class: 'ref' }, svg);
+    const t = el('text', { x: W - R, y: y(opts.ref) - 5, 'text-anchor': 'end', class: 'ref-label' }, svg);
+    t.textContent = opts.refLabel || '';
+  }
+  list.forEach(s => {
+    let dstr = '', open = false;
+    s.vals.forEach((v, i) => {
+      if (!fin(v)) { open = false; return; }
+      dstr += (open ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' ';
+      open = true;
+    });
+    el('path', { d: dstr, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+    // Isolated points (a day with no neighbour) would be invisible as a path.
+    s.vals.forEach((v, i) => {
+      if (!fin(v)) return;
+      const lone = !fin(s.vals[i - 1]) && !fin(s.vals[i + 1]);
+      const last = i === s.vals.length - 1 || s.vals.slice(i + 1).every(q => !fin(q));
+      if (lone || last) el('circle', { cx: x(i), cy: y(v), r: 4, fill: s.color, stroke: 'var(--surface)', 'stroke-width': 2 }, svg);
+    });
+  });
+  const cross = el('line', { x1: 0, x2: 0, y1: T, y2: H - B, class: 'cross', visibility: 'hidden' }, svg);
+  const dots = list.map(s => el('circle', { r: 4, fill: s.color, stroke: 'var(--surface)', 'stroke-width': 2, visibility: 'hidden' }, svg));
+  const hit = el('rect', { x: L, y: 0, width: W - L - R, height: H, class: 'chart-hit', tabindex: 0 }, svg);
+  const tip = tooltip(box);
+  let cur = n - 1;
+  const show = i => {
+    cur = Math.max(0, Math.min(n - 1, i));
+    const px = x(cur);
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.setAttribute('visibility', 'visible');
+    list.forEach((s, k) => {
+      const v = s.vals[cur];
+      if (fin(v)) { dots[k].setAttribute('cx', px); dots[k].setAttribute('cy', y(v)); dots[k].setAttribute('visibility', 'visible'); }
+      else dots[k].setAttribute('visibility', 'hidden');
+    });
+    const r = rec(days[cur]);
+    fillTip(tip, longDay(days[cur]) + (r && r.live ? ' · live rates' : ''),
+      list.map(s => ({ label: s.label, color: s.color, value: fin(s.vals[cur]) ? fmt.tip(s.vals[cur]) : 'no reading' })));
+    const scale = box.clientWidth / W;
+    placeTip(box, tip, px * scale, T + 10);
+    tip.classList.add('show');
+  };
+  const hide = () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tip.classList.remove('show'); };
+  hit.addEventListener('pointermove', e => {
+    const rect = svg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) * (W / rect.width);
+    show(n === 1 ? 0 : Math.round((px - L) / ((W - L - R) / (n - 1))));
+  });
+  hit.addEventListener('pointerleave', hide);
+  hit.addEventListener('focus', () => show(cur));
+  hit.addEventListener('blur', hide);
+  hit.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); show(cur - 1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); show(cur + 1); }
+  });
+}
+
+/**
+ * Where the money went: one stacked column per day. Wages + ads + profit = income
+ * on a profitable day; on a losing day the loss hangs below the baseline.
+ */
+function moneyChart(host, days) {
+  host.textContent = '';
+  const parts = [
+    { key: 'profit', label: 'Net profit', color: 'var(--s1)' },
+    { key: 'wages', label: 'Wages', color: 'var(--s2)' },
+    { key: 'ads', label: 'Advertising', color: 'var(--s3)' }
+  ];
+  const rows = days.map(d => rec(d)).map(r => (r && fin(r.income) && fin(r.wages) && fin(r.ads) && fin(r.profit)) ? r : null);
+  if (!rows.some(Boolean)) { host.innerHTML = '<div class="empty">No banked days in this range yet.</div>'; return; }
+  host.insertAdjacentHTML('beforeend', legendHtml(parts, true));
+  const box = document.createElement('div'); box.className = 'chart'; host.appendChild(box);
+  const W = Math.max(280, box.clientWidth || 600), H = 230, L = 58, R = 14, T = 10, B = 24;
+  let hi = 0, lo = 0;
+  rows.forEach(r => { if (!r) return; hi = Math.max(hi, r.wages + r.ads + Math.max(0, r.profit)); lo = Math.min(lo, r.profit); });
+  const ticks = niceTicks(lo, hi, 4); lo = ticks[0]; hi = ticks[ticks.length - 1];
+  const n = days.length, slot = (W - L - R) / n, bw = Math.max(3, Math.min(34, slot * 0.66));
+  const y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo || 1));
+  const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': 'Income split into profit, wages and advertising per day' }, box);
+  ticks.forEach(v => {
+    el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: v === 0 ? 'baseline' : 'gridline' }, svg);
+    el('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick' }, svg).textContent = compact(v);
+  });
+  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 64))));
+  days.forEach((d, i) => {
+    if (i % every && i !== n - 1) return;
+    if (i !== n - 1 && n - 1 - i < every) return;
+    el('text', { x: L + slot * (i + .5), y: H - 6, 'text-anchor': 'middle', class: 'tick' }, svg).textContent = shortDay(d);
+  });
+  const tip = tooltip(box);
+  const roundTop = (x0, y0, w, h, r) => {
+    r = Math.min(r, h, w / 2);
+    return 'M' + x0 + ' ' + (y0 + h) + 'V' + (y0 + r) + 'Q' + x0 + ' ' + y0 + ' ' + (x0 + r) + ' ' + y0 +
+      'H' + (x0 + w - r) + 'Q' + (x0 + w) + ' ' + y0 + ' ' + (x0 + w) + ' ' + (y0 + r) + 'V' + (y0 + h) + 'Z';
+  };
+  const roundBottom = (x0, y0, w, h, r) => {
+    r = Math.min(r, h, w / 2);
+    return 'M' + x0 + ' ' + y0 + 'V' + (y0 + h - r) + 'Q' + x0 + ' ' + (y0 + h) + ' ' + (x0 + r) + ' ' + (y0 + h) +
+      'H' + (x0 + w - r) + 'Q' + (x0 + w) + ' ' + (y0 + h) + ' ' + (x0 + w) + ' ' + (y0 + h - r) + 'V' + y0 + 'Z';
+  };
+  rows.forEach((r, i) => {
+    if (!r) return;
+    const x0 = L + slot * i + (slot - bw) / 2;
+    const g = el('g', {}, svg);
+    // Bottom to top: wages, ads, then profit (if any).
+    const stack = [{ v: r.wages, c: parts[1].color }, { v: r.ads, c: parts[2].color }];
+    if (r.profit > 0) stack.push({ v: r.profit, c: parts[0].color });
+    let base = 0;
+    const drawn = stack.filter(s => s.v > 0);
+    drawn.forEach((s, k) => {
+      const top = base + s.v;
+      const y0 = y(top), h = Math.max(0, y(base) - y(top) - (k ? 2 : 0));
+      if (k === drawn.length - 1) el('path', { d: roundTop(x0, y0, bw, h, 4), fill: s.c }, g);
+      else el('rect', { x: x0, y: y0, width: bw, height: h, fill: s.c }, g);
+      base = top;
+    });
+    if (r.profit < 0) {
+      const y0 = y(0) + 1, h = Math.max(1, y(r.profit) - y(0) - 1);
+      el('path', { d: roundBottom(x0, y0, bw, h, 4), fill: parts[0].color, opacity: .9 }, g);
+    }
+    const hit = el('rect', { x: L + slot * i, y: T, width: slot, height: H - T - B, class: 'chart-hit', tabindex: 0 }, svg);
+    const show = () => {
+      g.setAttribute('opacity', '.8');
+      fillTip(tip, longDay(days[i]) + (r.live ? ' · live rates' : ''), [
+        { label: 'Income', value: money(r.income) },
+        { label: 'Net profit', color: parts[0].color, value: money(r.profit) + '  ' + pct(r.profit, r.income) },
+        { label: 'Wages', color: parts[1].color, value: money(r.wages) },
+        { label: 'Advertising', color: parts[2].color, value: money(r.ads) }
+      ]);
+      placeTip(box, tip, (L + slot * (i + .5)) * box.clientWidth / W, T + 10);
+      tip.classList.add('show');
+    };
+    const hide = () => { g.removeAttribute('opacity'); tip.classList.remove('show'); };
+    hit.addEventListener('pointerenter', show); hit.addEventListener('pointerleave', hide);
+    hit.addEventListener('focus', show); hit.addEventListener('blur', hide);
+  });
+}
+
+const FMT = {
+  money: { axis: compact, tip: money },
+  count: { axis: compactNum, tip: num },
+  pct: { axis: v => Math.round(v) + '%', tip: v => (Math.round(v * 10) / 10) + '%' }
+};
+
+// ---------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------
+const app = document.getElementById('app');
+const I = {
+  ov: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  fin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  prod: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6"/><path d="M17 7L5 19"/><path d="M11 3c3 0 7 2 10 5"/></svg>',
+  staff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6 6 0 0 1 3.5 6"/></svg>',
+  train: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 9L12 4 2 9l10 5 10-5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/></svg>',
+  opt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
+  bench: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V11M16 21V7M12 21v-6M4 21h16"/><path d="M12 3l1.5 3 3.3.5-2.4 2.3.6 3.2L12 10.5 9 12l.6-3.2-2.4-2.3 3.3-.5z"/></svg>',
+  hist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  mark: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-linejoin="round"><path d="M12 2l7 5-2.5 13h-9L5 7z" fill="rgba(229,160,42,0.25)" stroke="#e5a02a" stroke-width="1.5"/><path d="M5 7h14M12 2l-3.5 5L12 20l3.5-13z" stroke="#7fe0d4" stroke-width="1.2" opacity=".9"/></svg>'
+};
+const TABS = [
+  { id: 'ov', label: 'Overview' },
+  { id: 'fin', label: 'Finance' },
+  { id: 'prod', label: 'Production' },
+  { id: 'staff', label: 'Staff' },
+  { id: 'train', label: 'Training' },
+  { id: 'opt', label: 'Optimise' },
+  { id: 'bench', label: 'Benchmark' },
+  { id: 'hist', label: 'History' }
+];
+let flashMsg = '', flashTimer = null, onboardNote = null;
+function flash(m) {
+  flashMsg = m; render();
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { flashMsg = ''; render(); }, 4000);
+}
+
+/**
+ * A KPI tile. `spark` = {f: history field, good: +1 if up is welcome / -1 if not}: adds a
+ * 14-day sparkline and a chip comparing the latest banked day to the 7 before it.
+ */
+function kpi(label, value, note, tone, spark) {
+  let extra = '', chip = '';
+  if (spark && state.data) {
+    const days = []; for (let i = 13; i >= 0; i--) days.push(shiftDay(state.data.day, -i));
+    const vals = series(days, spark.f);
+    chip = deltaChip(vals, spark.good);
+    extra = sparkSvg(vals, spark.color || 'var(--s1)', label + ', last 14 working days');
+  }
+  return '<div class="card kpi' + (tone ? ' ' + tone : '') + '"><div class="label">' + esc(label) + '</div>' +
+    '<div class="value">' + value + '</div><div class="note">' + chip + (note || (chip ? '' : '&nbsp;')) + '</div>' + extra + '</div>';
+}
+function deltaChip(vals, good) {
+  const idx = vals.map((v, i) => fin(v) ? i : -1).filter(i => i >= 0);
+  if (idx.length < 3) return '';
+  const last = vals[idx[idx.length - 1]];
+  const prev = idx.slice(-8, -1).map(i => vals[i]);
+  const base = prev.reduce((a, b) => a + b, 0) / prev.length;
+  if (!base) return '';
+  const ch = (last - base) / Math.abs(base);
+  const cls = Math.abs(ch) < 0.005 ? 'flat' : (ch > 0) === (good >= 0) ? 'up' : 'down';
+  return '<span class="delta ' + cls + '" title="Latest banked day vs the average of the ' + prev.length + ' before it">' +
+    (ch > 0 ? '▲' : ch < 0 ? '▼' : '•') + ' ' + Math.abs(ch * 100).toFixed(1) + '%</span>';
+}
+let sparkN = 0;
+function sparkSvg(vals, color, label) {
+  const pts = vals.map((v, i) => fin(v) ? { i, v } : null).filter(Boolean);
+  if (pts.length < 2) return '';
+  const lo = Math.min(...pts.map(p => p.v)), hi = Math.max(...pts.map(p => p.v));
+  const n = vals.length - 1 || 1;
+  const x = i => (i / n) * 100, y = v => 27 - (hi === lo ? 12 : ((v - lo) / (hi - lo)) * 24);
+  let line = '', open = false, prevI = -2;
+  vals.forEach((v, i) => {
+    if (!fin(v)) { open = false; return; }
+    line += (open && prevI === i - 1 ? 'L' : 'M') + x(i).toFixed(2) + ' ' + y(v).toFixed(2) + ' ';
+    open = true; prevI = i;
+  });
+  const first = pts[0], last = pts[pts.length - 1];
+  const area = 'M' + x(first.i) + ' 30 ' + pts.map(p => 'L' + x(p.i).toFixed(2) + ' ' + y(p.v).toFixed(2)).join(' ') + ' L' + x(last.i) + ' 30 Z';
+  const id = 'sg' + (++sparkN);
+  return '<svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="' + esc(label) + '">' +
+    '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + color + '" stop-opacity=".28"/><stop offset="1" stop-color="' + color + '" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#' + id + ')"/>' +
+    '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+}
+function kv(k, v, n) {
+  return '<div class="k">' + esc(k) + '</div><div class="v">' + v + (n ? '<span class="n">' + n + '</span>' : '') + '</div>';
+}
+
+function render() {
+  const d = state.data;
+  if (!d && !state.apiKey) { renderOnboard(); return; }
+
+  const list = alerts(d);
+  if (flashMsg) list.unshift({ level: 'info', text: flashMsg });
+  const icon = { crit: '!', warn: '!', info: 'i' };
+  const lvlName = { crit: 'Critical', warn: 'Warning', info: '' };
+
+  const stale = state.pulledAt && Date.now() - state.pulledAt > CACHE_MIN * 2 * 60000;
+  const live = '<span class="live' + (pulling ? ' busy' : stale ? ' stale' : '') + '"><i></i>' + (pulling ? 'Pulling' : stale ? 'Stale' : 'Live') + '</span>';
+  const stars = d && d.rating ? '<span class="stars" aria-label="' + d.rating + ' stars">' + '★'.repeat(Math.min(10, d.rating)) + '<span class="off">' + '★'.repeat(Math.max(0, 10 - d.rating)) + '</span></span>' : '';
+
+  let html = '<header class="top"><div class="brand"><div class="brand-mark">' + I.mark + '</div><div class="brand-text"><h1>' + esc((d && d.companyName) || 'Company dashboard') + '</h1>' +
+    '<div class="meta">' + stars + live +
+    (d ? '<span>Working day ' + esc(longDay(d.day)) + '</span><span>pulled ' + esc(ago(state.pulledAt)) + '</span>' : '<span>No data yet</span>') +
+    (state.importedAt ? '<span>backup imported ' + esc(ago(state.importedAt)) + '</span>' : '') + '</div></div></div>' +
+    '<div class="actions"><button id="refresh"' + (pulling || !state.apiKey ? ' disabled' : '') + '>' + I.refresh + (pulling ? 'Pulling…' : 'Refresh') + '</button>' +
+    '<button id="open-settings">' + I.gear + 'Settings</button></div></header>';
+
+  if (list.length) {
+    html += '<div class="alerts" role="status">' + list.map(a =>
+      '<div class="alert ' + a.level + '"><span class="ico" aria-hidden="true">' + icon[a.level] + '</span><span>' +
+      (lvlName[a.level] ? '<span class="lvl">' + lvlName[a.level] + ':</span>' : '') + esc(a.text) + '</span></div>').join('') + '</div>';
+  }
+
+  if (!d) {
+    html += '<div class="card"><div class="empty">' + (pulling ? 'Loading…' : 'Nothing pulled yet. Hit Refresh, or import a script backup from Settings.') + '</div></div>';
+    app.innerHTML = html; wireTop(); return;
+  }
+
+  html += '<div class="bar-row"><div class="tabs" role="tablist">' + TABS.map(t =>
+    '<button class="tab' + (state.tab === t.id ? ' on' : '') + '" role="tab" aria-selected="' + (state.tab === t.id) + '" title="' + t.label + '" data-tab="' + t.id + '">' + (I[t.id] || '') + '<span class="tl">' + t.label + '</span></button>').join('') +
+    '</div><div class="range">Range ' + [7, 14, 30, 0].map(r =>
+      '<button data-range="' + r + '" class="' + (state.range === r ? 'on' : '') + '">' + (r ? r + 'd' : 'All') + '</button>').join('') + '</div></div>';
+
+  html += '<main id="view"' + (pulling ? ' class="loading"' : '') + '></main>';
+  app.innerHTML = html;
+  wireTop();
+  const view = document.getElementById('view');
+  const fn = { ov: viewOverview, fin: viewFinance, prod: viewProduction, staff: viewStaff, train: viewTraining, opt: viewOptimise, bench: viewBenchmark, hist: viewHistory }[state.tab] || viewFinance;
+  fn(view, d);
+}
+
+function wireTop() {
+  const r = document.getElementById('refresh');
+  if (r) r.onclick = () => pull(true);
+  const s = document.getElementById('open-settings');
+  if (s) s.onclick = openSettings;
+  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { state.tab = b.dataset.tab; save(); render(); });
+  app.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { state.range = Number(b.dataset.range); save(); render(); });
+}
+
+function renderOnboard() {
+  app.innerHTML = '<div class="onboard"><div class="card">' +
+    '<h2>Company dashboard</h2><p>A standalone view of your company, built on the same numbers as the Company Daily Dashboard userscript.</p>' +
+    '<div class="opt"><h2 style="font-size:14px">1. Add your API key</h2>' +
+    '<p class="help">Needs company access (profile, detailed, employees, stock, news). Stored in this browser only; sent nowhere except api.torn.com. ' +
+    '<a href="https://www.torn.com/preferences.php#tab=api?step=addNewKey&title=Company%20Dashboard&company=profile,detailed,employees,stock,news" target="_blank" rel="noopener">Create a key on Torn</a></p>' +
+    '<div class="key-row"><input id="ob-key" type="password" autocomplete="off" spellcheck="false" placeholder="API key"><button id="ob-save" class="primary">Save and pull</button></div></div>' +
+    '<div class="opt"><h2 style="font-size:14px">2. Import your script backup (recommended)</h2>' +
+    '<p class="help">The API only returns the latest closed day. The backup carries the history and training ledger the userscript has banked. Its API key is discarded on import.</p>' +
+    '<button id="ob-import">Choose backup file</button><div class="msg' + (onboardNote ? ' ' + onboardNote.cls : '') + '" id="ob-msg">' + (onboardNote ? esc(onboardNote.text) : '') + '</div></div>' +
+    '</div></div>';
+  const key = document.getElementById('ob-key');
+  const go = () => {
+    const v = key.value.trim();
+    if (!v) return;
+    state.apiKey = v; key.value = ''; save(); render(); pull(true);
+  };
+  document.getElementById('ob-save').onclick = go;
+  key.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  document.getElementById('ob-import').onclick = () => pickFile(document.getElementById('ob-msg'));
+}
+
+// ---- Overview --------------------------------------------------------
+/**
+ * The rank week: Torn re-ranks every Sunday at 18:15 TCT on the week's takings. The week
+ * is the seven working days whose close falls Monday to Sunday, so the working day that
+ * closes on a Monday is day 1.
+ */
+function rankWeek(d) {
+  const dow = new Date(d.day + 'T12:00:00Z').getUTCDay();
+  const iso = dow === 0 ? 7 : dow;
+  const sum = (from, n) => {
+    let t = 0, got = 0;
+    for (let i = 0; i < n; i++) { const r = rec(shiftDay(from, i)); if (r && fin(r.income)) { t += r.income; got++; } }
+    return { t, got, n };
+  };
+  const monday = shiftDay(d.day, -(iso - 1));
+  const lastMonday = shiftDay(monday, -7);
+  const now = sum(monday, iso), same = sum(lastMonday, iso), full = sum(lastMonday, 7);
+  const proj = now.got ? now.t / now.got * 7 : null;
+  let ten = null;
+  const b = state.bench;
+  if (b && Array.isArray(b.top)) {
+    const tens = b.top.filter(c => c.rating >= 10).map(c => c.weekly);
+    if (tens.length) ten = { v: Math.min(...tens), n: tens.length };
+  }
+  const close = new Date(shiftDay(monday, 6) + 'T18:15:00Z');
+  return { iso, now, same, full, proj, ten, close };
+}
+
+function viewOverview(v, d) {
+  const s = state.settings;
+  const days14 = []; for (let i = 13; i >= 0; i--) days14.push(shiftDay(d.day, -i));
+  const profits = series(days14, 'profit');
+  const share = d.profit * (s.directorShare / 100);
+
+  // ---- hero: the closed day's profit
+  let html = '<div class="hero">' +
+    '<div class="card hero-main"><div class="hero-label">Net profit · ' + esc(longDay(d.day)) + '</div>' +
+    '<div class="hero-value ' + (d.profit >= 0 ? '' : 'neg') + '">' + money(d.profit) + '</div>' +
+    '<div class="hero-row">' + deltaChip(profits, 1) +
+      (d.margin == null ? '' : '<span><b>' + (100 * d.margin).toFixed(1) + '%</b> margin</span>') +
+      '<span>Income <b>' + compact(d.income) + '</b></span><span>Wages <b>' + compact(d.wages) + '</b></span><span>Ads <b>' + compact(d.ads) + '</b></span>' +
+      (s.directorShare > 0 ? '<span>Your share <b>' + compact(share) + '</b></span>' : '') + '</div>' +
+    sparkSvg(profits, 'var(--s1)', 'Net profit, last 14 working days') + '</div>';
+
+  // ---- rank-week race
+  const w = rankWeek(d);
+  const marks = [];
+  if (w.same.got) marks.push({ v: w.same.t, label: 'Same point last week ' + compact(w.same.t), cls: 'below' });
+  if (w.full.got === 7) marks.push({ v: w.full.t, label: 'Last week ' + compact(w.full.t), cls: '' });
+  if (w.ten) marks.push({ v: w.ten.v, label: '10★ line ~' + compact(w.ten.v), cls: 'gold' });
+  const top = Math.max(w.now.t, w.proj || 0, ...marks.map(m => m.v), 1) * 1.06;
+  const pc = v => Math.max(0, Math.min(100, 100 * v / top)).toFixed(2) + '%';
+  const vsSame = w.same.got ? w.now.t - w.same.t : null;
+  const leftDays = Math.max(0, Math.ceil((w.close - Date.now()) / 86400000));
+  html += '<div class="card race"><h2>Rank week</h2><div class="sub">Day ' + w.iso + ' of 7 · Torn re-ranks Sunday 18:15 TCT' + (leftDays ? ' · ' + leftDays + 'd left' : '') +
+    (w.now.got < w.iso ? ' · ' + (w.iso - w.now.got) + ' day(s) not banked' : '') + '</div>' +
+    '<div class="hero-value" style="font-size:32px">' + compact(w.now.t) + '</div>' +
+    '<div class="race-legend">' + (vsSame != null ? '<span>vs same point last week <b class="' + (vsSame >= 0 ? 'pos' : 'neg') + '">' + (vsSame >= 0 ? '+' : '') + compact(vsSame) + '</b></span>' : '') +
+      (w.proj ? '<span>on pace for <b>' + compact(w.proj) + '</b></span>' : '') + '</div>' +
+    '<div class="race-track" role="img" aria-label="Takings this week so far against last week and the 10 star line">' +
+      (w.proj ? '<div class="race-proj" style="width:' + pc(w.proj) + '"></div>' : '') +
+      '<div class="race-fill" style="width:' + pc(w.now.t) + '"></div>' +
+      marks.map(m => { const p = parseFloat(pc(m.v)); const al = p < 18 ? 'transform:none;left:-2px' : p > 82 ? 'transform:none;right:-2px' : '';
+        return '<div class="race-mark ' + m.cls + '" style="left:' + pc(m.v) + '"><span style="' + al + '">' + esc(m.label) + '</span></div>'; }).join('') +
+    '</div>' +
+    '<div class="help">' + (w.ten ? '10★ line = the lowest-earning 10★ company in your Benchmark sample (' + w.ten.n + ' of them), an upper bound on the real cutoff.' : 'Pull the Benchmark tab once to add a 10★ reference line.') +
+    ' Striped bar = projected finish at this week\'s pace.</div></div></div>';
+
+  // ---- stock runway
+  const cap = s.warehouseCap;
+  const surps = []; for (let i = 0; i < 7; i++) { const r = rec(shiftDay(d.day, -i)); if (r && fin(r.surplus)) surps.push(r.surplus); }
+  const avgNet = surps.length ? surps.reduce((a, b) => a + b, 0) / surps.length : null;
+  const util = cap ? d.inStock / cap : null;
+  let runway = '—', runTone = '';
+  if (avgNet != null && avgNet < 0) { const n = Math.floor(d.inStock / -avgNet); runway = n + ' days to empty'; runTone = n <= 7 ? 'neg' : ''; }
+  else if (avgNet != null && avgNet > 0 && cap) { const n = Math.floor((cap - d.inStock) / avgNet); runway = n + ' days to full'; runTone = n <= 7 ? 'neg' : ''; }
+  else if (avgNet === 0) runway = 'holding steady';
+  html += '<div class="grid cols-3">' +
+    '<div class="card"><h2>Stock</h2><div class="sub">' + esc(d.stockName || 'product') + ' · price ' + (d.price ? money(d.price) : '—') + (d.rrp ? ' (RRP ' + money(d.rrp) + ')' : '') + '</div>' +
+      '<div class="hero-value" style="font-size:30px">' + num(d.inStock) + '</div>' +
+      (util != null ? '<div class="meter ' + (util >= 0.9 ? 'crit' : util >= 0.75 ? 'warn' : '') + '"><i style="width:' + Math.min(100, 100 * util).toFixed(1) + '%"></i></div>' : '') +
+      '<div class="stat-list">' +
+        '<div class="stat-line"><span class="k">Capacity</span><span class="v">' + (cap ? (100 * util).toFixed(0) + '% of ' + compactNum(cap) : '—') + '</span></div>' +
+        '<div class="stat-line"><span class="k">Net per day (' + surps.length + 'd avg)</span><span class="v ' + (avgNet < 0 ? 'neg' : avgNet > 0 ? 'pos' : '') + '">' + (avgNet == null ? '—' : signed(avgNet)) + '</span></div>' +
+        '<div class="stat-line"><span class="k">Runway</span><span class="v ' + runTone + '">' + runway + '</span></div>' +
+        '<div class="stat-line"><span class="k">Sold · created today</span><span class="v">' + num(d.sold) + ' · ' + (d.created == null ? '—' : num(d.created)) + '</span></div>' +
+      '</div></div>';
+
+  // ---- staffing
+  const lost = d.addiction + d.inactivity;
+  const flagged = (d.staff || []).filter(p => p.addiction <= s.addictionFlag).length;
+  const idle = (d.staff || []).filter(p => p.daysIdle != null && p.daysIdle >= s.idleSkipDays).length;
+  const actions = wageActions(d).length;
+  html += '<div class="card"><h2>Staff</h2><div class="sub">Live roster as of the last pull</div>' +
+      '<div class="hero-value" style="font-size:30px">' + d.hired + (d.capacity ? '<span class="dim" style="font-size:18px"> / ' + d.capacity + '</span>' : '') + '</div>' +
+      (d.capacity ? '<div class="meter teal"><i style="width:' + Math.min(100, 100 * d.hired / d.capacity).toFixed(1) + '%"></i></div>' : '') +
+      '<div class="stat-list">' +
+        '<div class="stat-line"><span class="k">Total effectiveness</span><span class="v">' + num(d.effTotal) + '</span></div>' +
+        '<div class="stat-line"><span class="k">Lost to penalties</span><span class="v ' + (lost < 0 ? 'neg' : '') + '">' + (lost < 0 ? num(lost) : '0') + '</span></div>' +
+        '<div class="stat-line"><span class="k">Addiction flags · idle</span><span class="v">' + flagged + ' · ' + idle + '</span></div>' +
+        '<div class="stat-line"><span class="k">Wage actions</span><span class="v">' + actions + '</span></div>' +
+      '</div></div>';
+
+  // ---- training
+  const rot = rotation(d);
+  const next = rot.active.slice(0, 3);
+  html += '<div class="card"><h2>Training</h2><div class="sub">Trains available as of the last pull' + (fin(d.rating) ? ' · +' + d.rating + ' a day' : '') + '</div>' +
+      '<div class="hero-value" style="font-size:30px">' + (fin(d.trains) ? num(d.trains) : '—') + '<span class="dim" style="font-size:18px"> / 20</span></div>' +
+      (fin(d.trains) ? '<div class="meter ' + (d.trains >= 20 ? 'crit' : d.trains + (d.rating || 0) > 20 ? 'warn' : '') + '"><i style="width:' + Math.min(100, 5 * d.trains) + '%"></i></div>' : '') +
+      '<div class="stat-list">' + (next.length ? next.map((p, i) =>
+        '<div class="stat-line"><span class="k">' + (i + 1) + '. ' + esc(p.name) + '</span><span class="v">' + p.turns + ' turns</span></div>').join('') : '<div class="empty">Nobody in rotation.</div>') +
+      '</div></div></div>';
+
+  // ---- sales trend
+  html += '<div class="card mt"><h2>Sales, last 14 days</h2><div class="sub">Income per working day. Hover for figures.</div><div id="c-ov"></div></div>';
+  v.innerHTML = html;
+  lineChart(document.getElementById('c-ov'), days14, [{ label: 'Income', color: 'var(--s1)', vals: series(days14, 'income') }], FMT.money, { aria: 'Income per day, last 14 days', height: 180 });
+}
+
+// ---- Finance ---------------------------------------------------------
+function viewFinance(v, d) {
+  const s = state.settings;
+  const share = d.profit * (s.directorShare / 100);
+  let html = '<div class="grid kpis">' +
+    kpi('Net profit', moneyTile(d.profit), (d.margin == null ? '' : (100 * d.margin).toFixed(1) + '% margin'), d.profit >= 0 ? 'good accent' : 'crit', { f: 'profit', good: 1 }) +
+    (s.directorShare > 0 ? kpi('Your share', moneyTile(share), s.directorShare + '% of profit', '', { f: 'profit', good: 1 }) : '') +
+    kpi('Income', moneyTile(d.income), 'gross for ' + shortDay(d.day), '', { f: 'income', good: 1 }) +
+    kpi('Wages', moneyTile(d.wages), pct(d.wages, d.income) + ' of income', '', { f: 'wages', good: -1, color: 'var(--s2)' }) +
+    kpi('Advertising', moneyTile(d.ads), pct(d.ads, d.income) + ' of income', '', { f: 'ads', good: -1, color: 'var(--s3)' }) +
+    kpi('Company bank', fin(d.bank) ? '<span title="' + money(d.bank) + '">' + (Math.abs(d.bank) >= 1e8 ? compact(d.bank) : money(d.bank)) + '</span>' : '—', 'as of last pull') +
+    '</div>';
+
+  // Monday-to-Sunday split, as the script's Finance tab does it.
+  const dow = new Date(d.day + 'T12:00:00Z').getUTCDay();
+  const isoDay = dow === 0 ? 7 : dow;
+  let wtd = 0, logged = 0;
+  for (let i = 0; i < isoDay; i++) { const r = rec(shiftDay(d.day, -i)); if (r && fin(r.profit)) { wtd += r.profit; logged++; } }
+  const proj = logged ? wtd / logged * 7 : null;
+
+  const days = daysInRange();
+  const profits = series(days, 'profit').filter(fin);
+  const incomes = series(days, 'income').filter(fin);
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+
+  html += '<div class="grid cols-2">' +
+    '<div class="card"><h2>Where the money went</h2><div class="sub">Income per working day, split into wages, advertising and net profit. Hover a day for figures.</div><div id="c-money"></div></div>' +
+    '<div class="card"><h2>This week</h2><div class="sub">Monday to Sunday · day ' + isoDay + ' of 7 · ' + logged + ' banked</div><div class="kv">' +
+      kv('Net so far', money(wtd), proj != null ? 'projecting ' + compact(proj) : '') +
+      (s.directorShare > 0 ? kv('Owner', money(wtd * (100 - s.directorShare) / 100), (100 - s.directorShare) + '%') +
+        kv('Director', money(wtd * s.directorShare / 100), s.directorShare + '%') : '') +
+    '</div><h2 class="mt">Across the range</h2><div class="sub">' + profits.length + ' of ' + days.length + ' days banked</div><div class="kv">' +
+      kv('Average profit', money(avg(profits))) +
+      kv('Average income', money(avg(incomes))) +
+      kv('Total profit', money(profits.reduce((a, b) => a + b, 0))) +
+      kv('Best day', profits.length ? money(Math.max(...profits)) : '—') +
+      kv('Worst day', profits.length ? money(Math.min(...profits)) : '—') +
+    '</div>' +
+    (d.fromScript ? '' : '<div class="help mt">Today\'s wage and ad figures are live rates. The userscript carries the rates the day actually began on; importing a fresh backup replaces this with its figure.</div>') +
+    '</div></div>' +
+    '<div class="card mt"><h2>Net profit trend</h2><div class="sub">One line, one scale. Gaps are days nothing was banked.</div><div id="c-profit"></div></div>';
+  v.innerHTML = html;
+  moneyChart(document.getElementById('c-money'), days);
+  lineChart(document.getElementById('c-profit'), days, [{ label: 'Net profit', color: 'var(--s1)', vals: series(days, 'profit') }], FMT.money, { zero: true, aria: 'Net profit per day' });
+}
+
+// ---- Production ------------------------------------------------------
+function viewProduction(v, d) {
+  const cap = state.settings.warehouseCap;
+  const util = cap ? d.inStock / cap : null;
+  const tone = util == null ? '' : util >= 0.9 ? 'crit' : util >= 0.75 ? 'warn' : '';
+  let horizon = '';
+  if (d.surplus && cap) {
+    const n = Math.round(d.surplus > 0 ? (cap - d.inStock) / d.surplus : d.inStock / -d.surplus);
+    horizon = d.surplus > 0 ? (d.inStock >= cap ? 'over capacity' : 'full in ' + n + ' days') : 'empty in ' + n + ' days';
+  }
+  const priceNote = !d.price ? '' : d.rrp && d.price !== d.rrp ? (100 * d.price / d.rrp).toFixed(0) + '% of RRP ' + money(d.rrp) : 'at RRP';
+  const days = daysInRange();
+  const lad = priceLadder(days);
+
+  let html = '<div class="grid kpis">' +
+    '<div class="card kpi"><div class="label">Stock on hand</div><div class="value">' + num(d.inStock) + '</div>' +
+      (util == null ? '<div class="note">no capacity set</div>' :
+        '<div class="meter ' + tone + '"><i style="width:' + Math.min(100, 100 * util).toFixed(1) + '%"></i></div><div class="note">' +
+        (100 * util).toFixed(1) + '% of ' + num(cap) + (horizon ? ' · ' + horizon : '') + '</div>') + '</div>' +
+    kpi('Sold', num(d.sold), 'units · ' + shortDay(d.day), '', { f: 'sold', good: 1 }) +
+    kpi('Created', d.created == null ? '—' : num(d.created), d.created == null ? 'needs two consecutive days' : 'sold + stock change', '', { f: 'created', good: 1, color: 'var(--s2)' }) +
+    kpi('Surplus', d.surplus == null ? '—' : signed(d.surplus), 'units per day') +
+    kpi('Price', d.price ? money(d.price) : '—', priceNote) +
+    (fin(d.customers) ? kpi('Customers', num(d.customers), 'daily', '', { f: 'customers', good: 1 }) : '') +
+    '</div>' +
+    '<div class="grid cols-2">' +
+      '<div class="card"><h2>Sold vs created</h2><div class="sub">Units per day. Created is derived: sold + change in stock, only across consecutive days.</div><div id="c-flow"></div></div>' +
+      '<div class="card"><h2>Stock on hand</h2><div class="sub">Units at each close' + (cap ? ', against warehouse capacity' : '') + '.</div><div id="c-stock"></div></div>' +
+    '</div>' +
+    '<div class="card mt"><h2>Price ladder</h2><div class="sub">Every price you have traded at in this range. Observed days, not an experiment: popularity, ads and the roster moved too. A rung needs 2+ days to be called best.</div>';
+  if (!lad.rows.length) html += '<div class="empty">No priced days banked in this range.</div>';
+  else {
+    html += '<div class="tbl-wrap"><table><thead><tr><th>Price</th><th>vs RRP</th><th>Days</th><th>Sold / day</th><th>Profit / day</th><th class="l"></th></tr></thead><tbody>' +
+      lad.rows.map(r => '<tr><td>' + money(r.price) + '</td><td>' + (r.rrp ? (100 * r.price / r.rrp).toFixed(0) + '%' : '—') + '</td><td>' + r.days +
+        (r.days < 2 ? ' <span class="dim">thin</span>' : '') + '</td><td>' + num(r.soldPer) + '</td><td>' + money(r.profitPer) + '</td><td class="l">' +
+        (lad.best === r ? '<span class="tag good">best profit</span>' : '') + (r.price === d.price ? ' <span class="tag">current</span>' : '') + '</td></tr>').join('') +
+      '</tbody></table></div>';
+  }
+  html += '</div>';
+  v.innerHTML = html;
+  lineChart(document.getElementById('c-flow'), days, [
+    { label: 'Sold', color: 'var(--s1)', vals: series(days, 'sold') },
+    { label: 'Created', color: 'var(--s2)', vals: series(days, 'created') }
+  ], FMT.count, { aria: 'Units sold and created per day' });
+  lineChart(document.getElementById('c-stock'), days, [{ label: 'Stock', color: 'var(--s1)', vals: series(days, 'stock') }], FMT.count,
+    { zero: true, ref: cap || null, refLabel: 'capacity ' + compactNum(cap), aria: 'Stock on hand per day' });
+}
+
+// ---- Staff -----------------------------------------------------------
+function viewStaff(v, d) {
+  const s = state.settings;
+  const staff = d.staff || [];
+  const lost = d.addiction + d.inactivity;
+  const actions = wageActions(d);
+  const actBy = {}; actions.forEach(a => { actBy[a.id] = a; });
+  const days = daysInRange();
+
+  const rows = staff.map(p => ({
+    p, pen: p.addiction + p.inactivity,
+    target: p.hasStats ? targetSalary(p.stats, p.merits) : null,
+    perPt: p.eff ? p.wage / p.eff : null,
+    act: actBy[p.id]
+  }));
+  const sk = state.staffSort;
+  const val = (r, k) => ({ name: r.p.name.toLowerCase(), position: r.p.position, eff: r.p.eff, pen: r.pen,
+    idle: r.p.daysIdle == null ? -1 : r.p.daysIdle, tenure: r.p.daysInCompany == null ? -1 : r.p.daysInCompany,
+    wage: r.p.wage, target: r.target == null ? -1 : r.target, perpt: r.perPt == null ? -1 : r.perPt }[k]);
+  rows.sort((a, b) => { const x = val(a, sk.key), y = val(b, sk.key); return (x < y ? -1 : x > y ? 1 : 0) * sk.dir; });
+
+  const byPos = new Map();
+  staff.forEach(p => { const k = p.position || 'Other'; const g = byPos.get(k) || { eff: 0, n: 0 }; g.eff += p.eff; g.n++; byPos.set(k, g); });
+
+  const th = (k, label, cls) => '<th data-sort="' + k + '" tabindex="0" class="' + (cls || '') + (sk.key === k ? ' sorted' : '') + '"' +
+    (sk.key === k ? ' aria-sort="' + (sk.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' + label + (sk.key === k ? (sk.dir > 0 ? ' ▲' : ' ▼') : '') + '</th>';
+
+  let html = '<div class="grid kpis">' +
+    kpi('Employees', d.hired + (d.capacity ? ' / ' + d.capacity : ''), d.capacity && d.hired < d.capacity ? (d.capacity - d.hired) + ' free' : 'full') +
+    kpi('Total effectiveness', num(d.effTotal), lost < 0 ? num(-lost) + ' lost to penalties' : 'no penalties', lost < 0 ? '' : 'good', { f: 'eff', good: 1 }) +
+    kpi('Penalties', num(lost), 'addiction ' + num(d.addiction) + ' · inactivity ' + num(d.inactivity), lost < 0 ? 'crit' : '') +
+    kpi('Wage bill', moneyTile(d.wages), 'live roster') +
+    kpi('Wage actions', String(actions.length), actions.length ? 'see the Action column' : 'none suggested') +
+    '</div>' +
+    '<div class="card"><h2>Roster</h2><div class="sub">Live as of the last pull. Target wage = highest stat × ' + s.wageMult + ' + merits × ' + compact(s.eePerLevel) +
+      ', clamped and rounded as in the script. Click a column to sort.</div>' +
+    '<div class="tbl-wrap"><table><thead><tr>' + th('name', 'Name', 'l') + th('position', 'Position', 'l') + th('eff', 'Eff') + th('pen', 'Penalty') +
+      th('idle', 'Idle') + th('tenure', 'Days in') + th('wage', 'Wage') + th('target', 'Target') + th('perpt', '$ / pt') + '<th class="l">Action</th></tr></thead><tbody>' +
+    rows.map(r => {
+      const p = r.p;
+      const addFlag = p.addiction <= s.addictionFlag;
+      const idleFlag = p.daysIdle != null && p.daysIdle >= s.idleSkipDays;
+      let act = '';
+      if (r.act && r.act.kind === 'zero') act = '<span class="tag warn">set wage to $0</span>';
+      else if (r.act && r.act.kind === 'restore') act = '<span class="tag good">restore ' + compact(r.act.to) + '</span>';
+      const tDiff = r.target != null && p.wage > 0 ? p.wage - r.target : null;
+      return '<tr><td class="l"><a href="https://www.torn.com/profiles.php?XID=' + encodeURIComponent(p.id) + '" target="_blank" rel="noopener">' + esc(p.name) + '</a></td>' +
+        '<td class="l">' + esc(p.position) + '</td><td>' + num(p.eff) + '</td>' +
+        '<td class="' + (r.pen < 0 ? 'neg' : '') + '">' + (r.pen ? num(r.pen) : '0') + (addFlag ? ' <span class="tag crit">addiction</span>' : '') + '</td>' +
+        '<td>' + (p.daysIdle == null ? '—' : p.daysIdle + 'd') + (idleFlag ? ' <span class="tag warn">idle</span>' : '') + '</td>' +
+        '<td>' + (p.daysInCompany == null ? '—' : num(p.daysInCompany)) + '</td>' +
+        '<td>' + money(p.wage) + '</td>' +
+        '<td>' + (r.target == null ? '—' : money(r.target)) + (tDiff ? ' <span class="' + (tDiff > 0 ? 'neg' : 'pos') + '" title="wage minus target">' + (tDiff > 0 ? '+' : '') + compact(tDiff) + '</span>' : '') + '</td>' +
+        '<td>' + (r.perPt == null ? '—' : money(r.perPt)) + '</td><td class="l">' + act + '</td></tr>';
+    }).join('') + '</tbody></table></div></div>' +
+    '<div class="grid cols-2 mt">' +
+      '<div class="card"><h2>Company health</h2><div class="sub">Efficiency, environment and popularity at each close (%).</div><div id="c-health"></div></div>' +
+      '<div class="card"><h2>Effectiveness</h2><div class="sub">Total effectiveness at each close.</div><div id="c-eff"></div>' +
+        '<h2 class="mt">By position</h2><div class="kv">' +
+        [...byPos.entries()].sort((a, b) => b[1].eff - a[1].eff).map(([k, g]) => kv(k, num(g.eff), '(' + g.n + ')')).join('') + '</div></div>' +
+    '</div>';
+  v.innerHTML = html;
+  v.querySelectorAll('th[data-sort]').forEach(h => {
+    const go = () => { const k = h.dataset.sort; state.staffSort = { key: k, dir: sk.key === k ? -sk.dir : 1 }; save(); render(); };
+    h.onclick = go;
+    h.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  });
+  lineChart(document.getElementById('c-health'), days, [
+    { label: 'Efficiency', color: 'var(--s1)', vals: series(days, 'efficiency') },
+    { label: 'Environment', color: 'var(--s2)', vals: series(days, 'environment') },
+    { label: 'Popularity', color: 'var(--s3)', vals: series(days, 'popularity') }
+  ], FMT.pct, { aria: 'Efficiency, environment and popularity per day' });
+  lineChart(document.getElementById('c-eff'), days, [{ label: 'Effectiveness', color: 'var(--s1)', vals: series(days, 'eff') }], FMT.count, { aria: 'Total effectiveness per day' });
+}
+
+// ---- Training --------------------------------------------------------
+function viewTraining(v, d) {
+  const rot = rotation(d);
+  const led = ledger();
+  const all = rot.active.concat(rot.held);
+  const max = Math.max(1, ...all.map(p => p.turns));
+  const act = rot.active;
+  const spread = act.length ? act[act.length - 1].turns - act[0].turns : 0;
+  const totalTrains = all.reduce((t, p) => t + p.total, 0);
+  const reason = p => p.byHand ? 'held by hand' : p.tooNew ? 'too new to train' : p.idle ? 'idle ' + p.daysIdle + 'd' : '';
+
+  let html = '<div class="grid kpis">' +
+    kpi('Trains available', fin(d.trains) ? num(d.trains) : '—', 'as of the last pull' + (fin(d.rating) ? ' · +' + d.rating + '/day' : ''),
+      fin(d.trains) && d.trains >= 20 ? 'crit' : '') +
+    kpi('Next up', act.length ? esc(act[0].name) : '—', act.length ? esc(act[0].position) + ' · ' + act[0].turns + ' turns' : 'nobody in rotation') +
+    kpi('Rotation spread', String(spread), spread <= 1 ? 'even' : 'most minus fewest turns', spread <= 1 ? 'good' : '') +
+    kpi('Trains counted', num(totalTrains), 'since ' + shortDay(led.since)) +
+    '</div>' +
+    '<div class="grid cols-2">' +
+      '<div class="card"><h2>Queue</h2><div class="sub">Fewest turns first. Turns = trains counted + passed-over turns + the levelling baseline the script gave newcomers.</div>' +
+        (act.length ? act.map((p, i) => '<div class="hbar"><span class="nm" title="' + esc(p.name) + '">' + (i + 1) + '. ' + esc(p.name) + '</span>' +
+          '<span class="track"><i style="width:' + (100 * p.turns / max).toFixed(1) + '%"></i></span><span class="ct">' + p.turns + '</span></div>').join('')
+          : '<div class="empty">Nobody in rotation.</div>') +
+        (rot.held.length ? '<h2 class="mt">Held out</h2>' + rot.held.map(p => '<div class="hbar held"><span class="nm" title="' + esc(p.name) + '">' + esc(p.name) + '</span>' +
+          '<span class="track"><i style="width:' + (100 * p.turns / max).toFixed(1) + '%"></i></span><span class="ct">' + p.turns + '</span></div>' +
+          '<div class="help" style="margin:-2px 0 4px">' + esc(reason(p)) + '</div>').join('') : '') +
+      '</div>' +
+      '<div class="card"><h2>Ledger</h2><div class="sub">Counted from the company news feed, de-duplicated by event id. This page never trains anyone.</div>' +
+        '<div class="tbl-wrap"><table><thead><tr><th class="l">Name</th><th class="l">Position</th><th>Trains</th><th>Turns</th><th class="l">Status</th></tr></thead><tbody>' +
+        all.slice().sort((a, b) => b.total - a.total || a.name.localeCompare(b.name)).map(p =>
+          '<tr><td class="l">' + esc(p.name) + '</td><td class="l">' + esc(p.position) + '</td><td>' + p.total + '</td><td>' + p.turns + '</td><td class="l">' +
+          (p.skipped ? '<span class="tag warn">' + esc(reason(p)) + '</span>' : '<span class="tag">in rotation</span>') + '</td></tr>').join('') +
+        '</tbody></table></div>' +
+        (state.newsError ? '<div class="msg err">' + esc(state.newsError) + '</div>' : '') +
+        '<div class="help mt">This ledger and the userscript\'s are separate copies. Re-import a backup to pull in the script\'s corrections and levelling for new hires.</div>' +
+      '</div>' +
+    '</div>';
+  v.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------
+// Scoring. Same formula and calibration as the userscript, so a seat score
+// here is the number the script's Staff matrix would show.
+//   eff = FLOOR( MIN(45, 45/required x stat) + MAX(0, 5 x log2(stat/required)) )
+// summed over the seat's required stats.
+// ---------------------------------------------------------------------
+const STAT_KEYS = ['man', 'int', 'end'];
+function statComponent(stat, required) {
+  const v = Number(stat) || 0;
+  if (v <= 0 || !required) return 0;
+  const linear = v >= required ? 45 : (45 / required) * v;
+  const log = Math.max(0, 5 * Math.log2(v / required));
+  return Math.floor(linear + log + 1e-9);
+}
+function positionScore(pos, stats, k) {
+  const req = pos.req || {};
+  return STAT_KEYS.reduce((t, s) => t + statComponent(stats[s], (req[s] || 0) * k), 0);
+}
+function cleanPositions(list) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const out = list.filter(p => p && typeof p.name === 'string' && p.name && p.req)
+    .map(p => ({ name: String(p.name), req: { man: Number(p.req.man) || 0, int: Number(p.req.int) || 0, end: Number(p.req.end) || 0 } }))
+    .filter(p => p.req.man + p.req.int + p.req.end > 0);
+  return out.length === list.length ? out : null;
+}
+function positions() {
+  return (state.posCache && Array.isArray(state.posCache.list) && state.posCache.list.length) ? state.posCache.list : MINING_POSITIONS;
+}
+async function resolvePositions(type) {
+  state.posError = '';
+  if (!type) return;
+  const c = state.posCache;
+  if (c && c.type === type && cleanPositions(c.list)) return;
+  const data = await getJson('https://api.torn.com/torn/?selections=companies&comment=CompanyDash&key=' + encodeURIComponent(state.apiKey));
+  if (!data || data.error || !data.companies) {
+    state.posError = 'Could not load the seat table from Torn' + (data && data.error ? ' (' + data.error.error + ')' : '') + ' - using the built-in mining table.';
+    return;
+  }
+  const ct = data.companies[String(type)];
+  if (!ct || !ct.positions) { state.posError = 'Company type ' + type + ' is not in Torn\'s catalogue - using the built-in mining table.'; return; }
+  const list = Object.entries(ct.positions).map(([name, p]) => ({
+    name, req: { man: Number(p && p.man_required) || 0, int: Number(p && p.int_required) || 0, end: Number(p && p.end_required) || 0 }
+  })).filter(p => p.req.man + p.req.int + p.req.end > 0);
+  if (list.length) state.posCache = { type, name: ct.name || null, list };
+}
+
+/**
+ * Torn's published requirements do not match the scores it actually reports, so a
+ * single scale factor is fitted against Torn's own working_stats for every settled
+ * employee, maximising EXACT matches. Adopted only if it beats k = 1 and explains at
+ * least half the roster. Identical to the script's calibrateScoring().
+ */
+function calibrate(staff, list) {
+  const rows = [];
+  (staff || []).forEach(p => {
+    if (!p.hasStats || !fin(p.workingStats)) return;
+    if (p.settled != null && p.settled < 10) return;
+    const pos = list.find(x => x.name === p.position);
+    if (pos) rows.push({ pos, stats: p.stats, theirs: p.workingStats });
+  });
+  if (rows.length < 6) return { k: 1, exact: 0, n: rows.length, adopted: false };
+  const hits = k => rows.filter(r => positionScore(r.pos, r.stats, k) === r.theirs).length;
+  const base = hits(1);
+  let best = { k: 1, n: base };
+  for (let k = 0.50; k <= 1.50; k += 0.0025) {
+    const n = hits(k);
+    if (n > best.n || (n === best.n && Math.abs(k - 1) < Math.abs(best.k - 1))) best = { k, n };
+  }
+  const ok = best.n > base && best.n >= Math.ceil(rows.length * 0.5);
+  return { k: ok ? best.k : 1, exact: ok ? best.n : base, n: rows.length, adopted: ok };
+}
+
+// ---------------------------------------------------------------------
+// The optimiser
+// ---------------------------------------------------------------------
+/** "3 Sales Executive" per line -> [{seat, n}]. Seat names are matched case-insensitively. */
+function parsePriority(text, list) {
+  const steps = [], errors = [], last = [];
+  String(text || '').split(/\n+/).map(s => s.trim()).filter(Boolean).forEach(line => {
+    const lm = line.match(/^last\s*:?\s+(.+)$/i) || line.match(/^last\s*:\s*(.+)$/i);
+    if (lm) {
+      lm[1].split(',').map(s => s.trim()).filter(Boolean).forEach(name => {
+        const pos = list.find(p => p.name.toLowerCase() === name.toLowerCase());
+        if (!pos) errors.push('"' + name + '" is not a seat in this company');
+        else if (last.indexOf(pos.name) < 0) last.push(pos.name);
+      });
+      return;
+    }
+    const m = line.match(/^(\d+)\s*[x×]?\s+(.+)$/i);
+    if (!m) { errors.push('"' + line + '" should look like "3 Sales Executive"'); return; }
+    const n = Number(m[1]);
+    const want = m[2].trim().toLowerCase();
+    const pos = list.find(p => p.name.toLowerCase() === want);
+    if (!pos) { errors.push('"' + m[2].trim() + '" is not a seat in this company'); return; }
+    if (n > 0) steps.push({ seat: pos.name, n });
+  });
+  return { steps, errors, last };
+}
+
+/** Hungarian algorithm (min cost) on a square matrix. Returns assignment row -> column. */
+function hungarian(cost) {
+  const n = cost.length, INF = 1e18;
+  const u = new Array(n + 1).fill(0), v = new Array(n + 1).fill(0);
+  const p = new Array(n + 1).fill(0), way = new Array(n + 1).fill(0);
+  for (let i = 1; i <= n; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Array(n + 1).fill(INF), used = new Array(n + 1).fill(false);
+    do {
+      used[j0] = true;
+      const i0 = p[j0];
+      let delta = INF, j1 = 0;
+      for (let j = 1; j <= n; j++) {
+        if (used[j]) continue;
+        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+        if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+      }
+      for (let j = 0; j <= n; j++) {
+        if (used[j]) { u[p[j]] += delta; v[j] -= delta; } else minv[j] -= delta;
+      }
+      j0 = j1;
+    } while (p[j0] !== 0);
+    do { const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0);
+  }
+  const res = new Array(n);
+  for (let j = 1; j <= n; j++) if (p[j]) res[p[j] - 1] = j - 1;
+  return res;
+}
+
+/**
+ * 1. Priority seats, strictly in order: each step takes the n best remaining people for
+ *    that seat, ranked by seat score + merits (what they would actually produce there).
+ *    Ties go to whoever already sits in the seat, so nobody is moved for nothing.
+ * 2. Everyone left fills the remaining seats, which keep today's headcount per seat,
+ *    by the assignment that gives the highest total seat score (merits are the same
+ *    in every seat, so they cannot change this part).
+ * People with no readable stats are left where they are and hold their seat.
+ */
+function optimise(staff, list, k, steps, lastSeats) {
+  lastSeats = lastSeats || [];
+  const score = (p, seat) => positionScore(list.find(x => x.name === seat), p.stats, k);
+  const scored = staff.filter(p => p.hasStats);
+  const locked = staff.filter(p => !p.hasStats);
+  let pool = scored.slice();
+  const lineup = [];
+  const notes = [];
+
+  steps.forEach((st, si) => {
+    const ranked = pool.map(p => ({ p, val: score(p, st.seat) + (p.merits || 0), seatScore: score(p, st.seat) }))
+      .sort((a, b) => b.val - a.val || (b.p.position === st.seat) - (a.p.position === st.seat) || b.p.eff - a.p.eff || a.p.name.localeCompare(b.p.name));
+    const take = ranked.slice(0, st.n);
+    if (take.length < st.n) notes.push('Only ' + take.length + ' people left for ' + st.n + ' × ' + st.seat + '.');
+    take.forEach((t, i) => lineup.push({ p: t.p, seat: st.seat, seatScore: t.seatScore, val: t.val, step: si, rank: i + 1, priority: true }));
+    const gone = new Set(take.map(t => t.p.id));
+    pool = pool.filter(p => !gone.has(p.id));
+  });
+
+  // Leftover quotas: today's headcount per seat (scored staff only) minus what the
+  // priority steps already filled. If the priority steps asked for more of a seat than
+  // exists today, the extra comes out of the largest leftover seat.
+  const current = {}, prio = {};
+  scored.forEach(p => { current[p.position] = (current[p.position] || 0) + 1; });
+  lineup.forEach(l => { prio[l.seat] = (prio[l.seat] || 0) + 1; });
+  const quota = {};
+  Object.keys(current).forEach(s => { const q = current[s] - (prio[s] || 0); if (q > 0) quota[s] = q; });
+  let total = Object.values(quota).reduce((a, b) => a + b, 0);
+  const trimmed = {};
+  while (total > pool.length) {
+    const big = Object.keys(quota).sort((a, b) =>
+      (lastSeats.indexOf(b) >= 0) - (lastSeats.indexOf(a) >= 0) || quota[b] - quota[a])[0];
+    quota[big]--; if (!quota[big]) delete quota[big];
+    trimmed[big] = (trimmed[big] || 0) + 1;
+    total--;
+  }
+  Object.keys(trimmed).forEach(s => notes.push(trimmed[s] + ' fewer ' + s + (trimmed[s] === 1 ? '' : ' seats') + ' than today, to make room for the priority seats.'));
+  // Seats this company does not have in its table can't be scored; they stay as they are.
+  const slots = [];
+  Object.keys(quota).forEach(s => { for (let i = 0; i < quota[s]; i++) slots.push(s); });
+
+  if (pool.length && slots.length === pool.length) {
+    const known = s => list.some(x => x.name === s);
+    const val = (p, s) => (known(s) ? score(p, s) : 0) + (p.position === s ? 0.001 : 0);   // exact ties keep people put
+    // Stage 1: every seat that is not a fill-last seat, chosen for the best total. The spare
+    // columns are "goes to a fill-last seat" and are worth nothing here, so a strong person
+    // is only left for the last seats when no earlier seat can use them.
+    const early = slots.filter(s => lastSeats.indexOf(s) < 0);
+    const late = slots.filter(s => lastSeats.indexOf(s) >= 0);
+    const cols1 = early.concat(Array(late.length).fill(null));
+    const a1 = hungarian(pool.map(p => cols1.map(s => s ? -val(p, s) : 0)));
+    const placed = [], rest = [];
+    pool.forEach((p, i) => { const s = cols1[a1[i]]; if (s) placed.push({ p, s }); else rest.push(p); });
+    // Stage 2: whoever is left fills the fill-last seats, again for the best total.
+    if (rest.length) {
+      const a2 = hungarian(rest.map(p => late.map(s => -val(p, s))));
+      rest.forEach((p, i) => placed.push({ p, s: late[a2[i]] }));
+    }
+    placed.forEach(({ p, s }) => {
+      const ss = known(s) ? score(p, s) : 0;
+      lineup.push({ p, seat: s, seatScore: ss, val: ss + (p.merits || 0), priority: false, last: lastSeats.indexOf(s) >= 0 });
+    });
+  } else {
+    pool.forEach(p => lineup.push({ p, seat: p.position, seatScore: score(p, p.position), val: 0, priority: false, stuck: true }));
+    if (pool.length) notes.push('Could not balance the leftover seats, so ' + pool.length + ' people stay where they are.');
+  }
+
+  const before = scored.reduce((t, p) => t + (list.some(x => x.name === p.position) ? score(p, p.position) : 0), 0);
+  const after = lineup.reduce((t, l) => t + l.seatScore, 0);
+  const moves = lineup.filter(l => l.p.position !== l.seat).map(l => ({
+    p: l.p, from: l.p.position, to: l.seat,
+    delta: l.seatScore - (list.some(x => x.name === l.p.position) ? score(l.p, l.p.position) : 0)
+  })).sort((a, b) => b.delta - a.delta || a.p.name.localeCompare(b.p.name));
+  return { lineup, moves, before, after, notes, locked };
+}
+
+// ---- Optimise tab ----------------------------------------------------
+function viewOptimise(v, d) {
+  const list = positions();
+  const cal = calibrate(d.staff, list);
+  const pr = parsePriority(state.settings.optPriority, list);
+  const res = optimise(d.staff || [], list, cal.k, pr.steps, pr.last);
+  const src = state.posCache && state.posCache.list ? (state.posCache.name || 'your company type') : 'built-in mining table';
+  const seatRank = seat => { const i = list.findIndex(x => x.name === seat); return i < 0 ? 99 : i; };
+
+  const prioRows = res.lineup.filter(l => l.priority);
+  const restRows = res.lineup.filter(l => !l.priority).sort((a, b) => (a.last ? 1 : 0) - (b.last ? 1 : 0) || seatRank(a.seat) - seatRank(b.seat) || b.seatScore - a.seatScore);
+  const gain = res.after - res.before;
+
+  const row = l => {
+    const moved = l.p.position !== l.seat;
+    return '<tr><td class="l">' + (l.priority ? (l.step + 1) + '.' + l.rank : '') + '</td>' +
+      '<td class="l">' + esc(l.seat) + '</td>' +
+      '<td class="l"><a href="https://www.torn.com/profiles.php?XID=' + encodeURIComponent(l.p.id) + '" target="_blank" rel="noopener">' + esc(l.p.name) + '</a></td>' +
+      '<td>' + num(l.seatScore) + '</td><td>' + (l.priority ? num(l.p.merits || 0) : '<span class="dim">' + num(l.p.merits || 0) + '</span>') + '</td>' +
+      '<td class="l">' + (moved ? '<span class="tag warn">from ' + esc(l.p.position) + '</span>' : '<span class="tag">stays</span>') + '</td></tr>';
+  };
+
+  let html = '<div class="grid kpis">' +
+    kpi('Moves needed', String(res.moves.length), res.moves.length ? 'roster changes to submit' : 'lineup already matches', res.moves.length ? '' : 'good') +
+    kpi('Seat score now', num(res.before), 'stat component, all scored staff') +
+    kpi('Seat score after', num(res.after), (gain >= 0 ? '+' : '') + num(gain) + ' effectiveness', gain > 0 ? 'good' : gain < 0 ? 'crit' : '') +
+    kpi('Scoring calibration', cal.adopted ? '× ' + cal.k.toFixed(4) : '× 1', cal.adopted ? cal.exact + ' of ' + cal.n + ' match Torn exactly' : cal.n < 6 ? 'too few settled staff to calibrate' : 'published table kept') +
+    '</div>';
+
+  if (pr.errors.length || res.notes.length || state.posError) {
+    html += '<div class="alerts">' + pr.errors.concat(res.notes).concat(state.posError ? [state.posError] : []).map(t =>
+      '<div class="alert warn"><span class="ico" aria-hidden="true">!</span><span>' + esc(t) + '</span></div>').join('') + '</div>';
+  }
+
+  html += '<div class="grid cols-2">' +
+    '<div class="card"><h2>Moves to make</h2><div class="sub">Set these seats on the employee list, then submit once. Change is the seat-score difference for that person.</div>' +
+    (res.moves.length ? '<div class="tbl-wrap"><table><thead><tr><th class="l">Employee</th><th class="l">From</th><th class="l">To</th><th>Change</th></tr></thead><tbody>' +
+      res.moves.map(m => '<tr><td class="l">' + esc(m.p.name) + '</td><td class="l">' + esc(m.from) + '</td><td class="l"><b>' + esc(m.to) + '</b></td>' +
+        '<td class="' + (m.delta > 0 ? 'pos' : m.delta < 0 ? 'neg' : '') + '">' + signed(m.delta) + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<div class="empty">Nothing to move. Everyone already sits where this order puts them.</div>') +
+    '<p class="help">A negative change on a priority seat is expected: that person is worth more to you in the higher-priority seat even if they score less there.</p></div>' +
+    '<div class="card"><h2>Priority order</h2><div class="sub">One line per step, filled top to bottom. Each step takes the best remaining people by seat score + merits. A <b>last:</b> line names seats filled only after every other seat.</div>' +
+      '<textarea id="opt-pri" rows="7" spellcheck="false" style="font-size:13px">' + esc(state.settings.optPriority) + '</textarea>' +
+      '<div class="row-btns"><button id="opt-save" class="primary">Apply order</button><button id="opt-reset">Reset to default</button></div>' +
+      '<p class="help">Seats in this company (' + esc(src) + '): ' + list.map(p => esc(p.name)).join(', ') + '. Everyone after the priority steps fills the remaining seats at today\'s headcount, placed for the highest total seat score' + (pr.last.length ? ', with ' + pr.last.map(esc).join(', ') + ' filled last from whoever is left' : '') + '.</p>' +
+    '</div></div>';
+
+  html += '<div class="card mt"><h2>Ideal lineup</h2><div class="sub">Priority seats in the order they were filled, then everyone else by seat. Seat score is the stat component only; merits, settled-in and education bonuses are the same in every seat.</div>' +
+    '<div class="tbl-wrap"><table><thead><tr><th class="l">Step</th><th class="l">Seat</th><th class="l">Employee</th><th>Seat score</th><th>Merits</th><th class="l">Change</th></tr></thead><tbody>' +
+    prioRows.map(row).join('') +
+    (restRows.filter(l => !l.last).length ? '<tr><td colspan="6" class="l dim" style="padding-top:12px">Remaining seats</td></tr>' + restRows.filter(l => !l.last).map(row).join('') : '') +
+    (restRows.filter(l => l.last).length ? '<tr><td colspan="6" class="l dim" style="padding-top:12px">Filled last</td></tr>' + restRows.filter(l => l.last).map(row).join('') : '') +
+    (res.locked.length ? '<tr><td colspan="6" class="l dim" style="padding-top:12px">No stats in the pull, left in place: ' + res.locked.map(p => esc(p.name) + ' (' + esc(p.position) + ')').join(', ') + '</td></tr>' : '') +
+    '</tbody></table></div></div>';
+
+  html += '<div class="card mt"><h2>Score matrix</h2><div class="sub">Every person\'s seat score in every seat, calibrated. Bold is where the lineup puts them; underlined is where they sit now.</div>' +
+    '<div class="tbl-wrap"><table><thead><tr><th class="l">Employee</th>' + list.map(p => '<th title="' + esc(p.name) + '">' + esc(abbr(p.name)) + '</th>').join('') + '</tr></thead><tbody>' +
+    res.lineup.slice().sort((a, b) => a.p.name.localeCompare(b.p.name)).map(l =>
+      '<tr><td class="l">' + esc(l.p.name) + '</td>' + list.map(p => {
+        const s = positionScore(p, l.p.stats, cal.k);
+        const target = p.name === l.seat, now = p.name === l.p.position;
+        return '<td style="' + (target ? 'font-weight:700;color:var(--ink)' : 'color:var(--ink-2)') + (now ? ';text-decoration:underline' : '') + '">' + s + '</td>';
+      }).join('') + '</tr>').join('') +
+    '</tbody></table></div></div>';
+
+  v.innerHTML = html;
+  document.getElementById('opt-save').onclick = () => {
+    const t = document.getElementById('opt-pri').value;
+    state.settings.optPriority = t; save(); render();
+  };
+  document.getElementById('opt-reset').onclick = () => {
+    state.settings.optPriority = DEFAULTS.optPriority; save(); render();
+  };
+}
+function abbr(name) {
+  const w = String(name).trim().split(/\s+/);
+  return w.length > 1 ? w.map(x => x[0]).join('').toUpperCase() : name.slice(0, 3).toUpperCase();
+}
+
+// ---------------------------------------------------------------------
+// Benchmark: how the top companies of your type staff their seats.
+// Uses two public selections: company/{typeId}?selections=companies (every company
+// of the type, with weekly income) and company/{id}?selections=profile (its roster,
+// with each employee's position). Stats are private, so this is seat counts only.
+// ---------------------------------------------------------------------
+const BENCH_TOP = 50;
+const BENCH_GAP_MS = 700;           // ~85 calls a minute at most, under Torn's 100
+let benchRun = null;                // {done, total, error} while a pull is in flight
+
+async function pullBenchmark() {
+  if (benchRun || !state.apiKey) return;
+  const d = state.data;
+  const type = d && d.companyType;
+  if (!type) { state.benchError = 'Company type unknown - refresh once so the dashboard can read it.'; render(); return; }
+  benchRun = { done: 0, total: BENCH_TOP + 1 };
+  state.benchError = '';
+  render();
+  try {
+    const listRes = await getJson('https://api.torn.com/company/' + type + '?selections=companies&comment=CompanyDash&key=' + encodeURIComponent(state.apiKey));
+    if (listRes && listRes.error) throw new Error(API_ERRORS[listRes.error.code] || listRes.error.error);
+    const all = listRes.company || listRes.companies || {};
+    const rows = Object.entries(all).map(([id, c]) => ({
+      id: String(c.ID || id), name: String(c.name || ('#' + id)),
+      rating: Number(c.rating) || 0,
+      hired: Number(c.employees_hired) || 0, capacity: Number(c.employees_capacity) || 0,
+      weekly: Number(c.weekly_income) || 0, daily: Number(c.daily_income) || 0,
+      customers: Number(c.weekly_customers) || 0
+    })).filter(c => c.weekly > 0).sort((a, b) => b.weekly - a.weekly);
+    if (!rows.length) throw new Error('Torn returned no companies for this type.');
+    rows.forEach((r, i) => { r.rank = i + 1; });
+    const top = rows.slice(0, BENCH_TOP);
+    const mine = d.companyId ? rows.find(r => r.id === String(d.companyId)) : rows.find(r => r.name === d.companyName);
+    benchRun.done = 1;
+    render();
+
+    for (const c of top) {
+      await new Promise(r => setTimeout(r, BENCH_GAP_MS));
+      try {
+        const p = await getJson('https://api.torn.com/company/' + encodeURIComponent(c.id) + '?selections=profile&comment=CompanyDash&key=' + encodeURIComponent(state.apiKey));
+        if (p && p.error) throw new Error(p.error.error);
+        const emp = ((p.company || p) || {}).employees || {};
+        c.seats = {};
+        Object.values(emp).forEach(e => { const pos = String((e && e.position) || 'Unknown'); c.seats[pos] = (c.seats[pos] || 0) + 1; });
+        c.staffed = Object.keys(emp).length;
+      } catch (e) {
+        c.seats = null; c.err = e.message || String(e);
+        if (/Too many/i.test(c.err)) { await new Promise(r => setTimeout(r, 30000)); }
+      }
+      benchRun.done++;
+      if (benchRun.done % 5 === 0) render();
+    }
+    state.bench = { at: Date.now(), type, total: rows.length, top, mine: mine || null };
+    save();
+  } catch (e) {
+    state.benchError = e.message || String(e);
+  } finally {
+    benchRun = null;
+    render();
+  }
+}
+
+const median = a => { const s = a.slice().sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
+
+function viewBenchmark(v, d) {
+  const b = state.bench;
+  const list = positions();
+  const fresh = b && Date.now() - b.at < 20 * 3600000;
+  let html = '';
+
+  const btn = '<button id="bench-pull" class="primary"' + (benchRun || !state.apiKey ? ' disabled' : '') + '>' +
+    (benchRun ? 'Pulling ' + benchRun.done + ' / ' + benchRun.total + '…' : b ? 'Pull again' : 'Pull top ' + BENCH_TOP) + '</button>';
+  html += '<div class="card"><div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">' +
+    '<div><h2>Top ' + BENCH_TOP + ' ' + esc((state.posCache && state.posCache.name) || 'companies of your type') + ' by weekly income</h2>' +
+    '<div class="sub" style="margin:0">' + (b ? 'Pulled ' + ago(b.at) + ' · ' + b.total + ' companies of this type' : 'Not pulled yet. Costs ' + (BENCH_TOP + 1) + ' API calls, about 40 seconds.') +
+    (fresh && !benchRun ? ' · fresh enough, no need to pull again today' : '') + '</div></div>' + btn + '</div>' +
+    (state.benchError ? '<div class="msg err">' + esc(state.benchError) + '</div>' : '') +
+    (!state.apiKey ? '<div class="msg err">Needs your API key (Settings).</div>' : '') + '</div>';
+
+  if (!b) { v.innerHTML = html; wireBench(); return; }
+
+  const got = b.top.filter(c => c.seats);
+  const top10 = got.slice(0, 10);
+  const full = got.filter(c => c.capacity && c.hired >= c.capacity);
+
+  // Your current counts and the optimiser's target counts.
+  const nowCounts = {}; (d.staff || []).forEach(p => { nowCounts[p.position] = (nowCounts[p.position] || 0) + 1; });
+  let planCounts = null;
+  try {
+    const cal = calibrate(d.staff, list);
+    const pr = parsePriority(state.settings.optPriority, list);
+    const res = optimise(d.staff || [], list, cal.k, pr.steps, pr.last);
+    planCounts = {}; res.lineup.forEach(l => { planCounts[l.seat] = (planCounts[l.seat] || 0) + 1; });
+  } catch (e) { planCounts = null; }
+
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  html += '<div class="grid kpis mt">' +
+    kpi('Your rank', b.mine ? '#' + b.mine.rank : '—', 'of ' + b.total + ' by weekly income') +
+    kpi('Your weekly income', b.mine ? compact(b.mine.weekly) : '—', b.mine ? b.mine.rating + '★ · ' + b.mine.hired + '/' + b.mine.capacity + ' staff' : '') +
+    kpi('Top 10 average', compact(avg(top10.map(c => c.weekly))), top10.length + ' rosters read') +
+    kpi('#' + (got.length || BENCH_TOP) + ' in the sample', got.length ? compact(got[got.length - 1].weekly) : '—', 'the entry bar for this list') +
+    '</div>';
+
+  const seatNames = list.map(p => p.name);
+  const cnt = (c, s) => (c.seats && c.seats[s]) || 0;
+  const range = (arr) => arr.length ? Math.min(...arr) + '–' + Math.max(...arr) : '—';
+  html += '<div class="card mt"><h2>Seat counts</h2><div class="sub">Median (range) per seat. "Fully staffed" is the top-' + BENCH_TOP + ' companies at capacity, which is the fairest comparison for a 20-seat company.</div>' +
+    '<div class="tbl-wrap"><table><thead><tr><th class="l">Seat</th><th>You now</th><th>Your plan</th><th>Top 10</th><th>Top ' + BENCH_TOP + ', fully staffed (' + full.length + ')</th></tr></thead><tbody>' +
+    seatNames.map(s => {
+      const t10 = top10.map(c => cnt(c, s)), tf = full.map(c => cnt(c, s));
+      return '<tr><td class="l">' + esc(s) + '</td><td>' + (nowCounts[s] || 0) + '</td><td>' + (planCounts ? (planCounts[s] || 0) : '—') + '</td>' +
+        '<td>' + (t10.length ? median(t10) + ' <span class="dim">(' + range(t10) + ')</span>' : '—') + '</td>' +
+        '<td>' + (tf.length ? median(tf) + ' <span class="dim">(' + range(tf) + ')</span>' : '—') + '</td></tr>';
+    }).join('') + '</tbody></table></div></div>';
+
+  // Does running more of a seat go with more income? Grouped by count, fully staffed only.
+  const focus = ['Sales Executive', 'Secretary', 'Mill Operator'].filter(s => seatNames.indexOf(s) >= 0);
+  html += '<div class="grid mt" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">' + focus.map(s => {
+    const groups = {};
+    full.forEach(c => { const n = cnt(c, s); (groups[n] = groups[n] || []).push(c); });
+    const keys = Object.keys(groups).map(Number).sort((a, b) => a - b);
+    return '<div class="card"><h2>' + esc(s) + ': count vs income</h2><div class="sub">Fully staffed companies in the top ' + BENCH_TOP + ', grouped by how many ' + esc(s) + ' seats they run. Correlation, not proof: stars, price and ads differ too.</div>' +
+      (keys.length ? '<div class="tbl-wrap"><table><thead><tr><th class="l">Seats</th><th>Companies</th><th>Avg weekly</th><th>Best #</th></tr></thead><tbody>' +
+        keys.map(k => { const g = groups[k]; return '<tr><td class="l">' + k + (planCounts && planCounts[s] === k ? ' <span class="tag">plan</span>' : '') + '</td><td>' + g.length + '</td><td>' + compact(avg(g.map(c => c.weekly))) + '</td><td>' + Math.min(...g.map(c => c.rank)) + '</td></tr>'; }).join('') +
+        '</tbody></table></div>' : '<div class="empty">No fully staffed companies in the sample.</div>') + '</div>';
+  }).join('') + '</div>';
+
+  html += '<div class="card mt"><h2>Rosters</h2><div class="sub">Every company sampled, by rank. Seat columns use the same abbreviations as the Optimise matrix.</div>' +
+    '<div class="tbl-wrap"><table><thead><tr><th>#</th><th class="l">Company</th><th>★</th><th>Staff</th><th>Weekly income</th><th>Customers</th>' +
+    seatNames.map(s => '<th title="' + esc(s) + '">' + esc(abbr(s)) + '</th>').join('') + '</tr></thead><tbody>' +
+    b.top.map(c => '<tr><td>' + c.rank + '</td><td class="l">' + esc(c.name) + '</td><td>' + c.rating + '</td><td>' + c.hired + '/' + c.capacity + '</td><td>' + compact(c.weekly) + '</td><td>' + num(c.customers) + '</td>' +
+      (c.seats ? seatNames.map(s => '<td>' + cnt(c, s) + '</td>').join('') : '<td colspan="' + seatNames.length + '" class="l dim">roster unavailable' + (c.err ? ': ' + esc(c.err) : '') + '</td>') + '</tr>').join('') +
+    (b.mine && !b.top.some(c => c.id === b.mine.id) ? '<tr><td>' + b.mine.rank + '</td><td class="l"><b>' + esc(b.mine.name) + '</b> (you, now)</td><td>' + b.mine.rating + '</td><td>' + b.mine.hired + '/' + b.mine.capacity + '</td><td>' + compact(b.mine.weekly) + '</td><td>' + num(b.mine.customers) + '</td>' +
+      seatNames.map(s => '<td>' + (nowCounts[s] || 0) + '</td>').join('') + '</tr>' : '') +
+    '</tbody></table></div></div>';
+
+  v.innerHTML = html;
+  wireBench();
+}
+function wireBench() {
+  const b = document.getElementById('bench-pull');
+  if (b) b.onclick = () => pullBenchmark();
+}
+
+// ---- History ---------------------------------------------------------
+function viewHistory(v) {
+  const days = daysInRange().slice().reverse();
+  let html = '<div class="card"><h2>Banked days</h2><div class="sub">Newest first. <span class="tag">script</span> came from your backup with carried rates; ' +
+    '<span class="tag warn">live</span> was banked at live wage and ad rates, so it can be off if wages or ads changed that day.</div>' +
+    '<div class="tbl-wrap"><table><thead><tr><th>Day</th><th>Income</th><th>Wages</th><th>Ads</th><th>Profit</th><th>Margin</th><th>Sold</th><th>Created</th><th>Stock</th><th>Price</th><th class="l">Source</th></tr></thead><tbody>';
+  const shown = days.filter(d => rec(d));
+  if (!shown.length) html += '<tr><td colspan="11" class="empty">No banked days in this range.</td></tr>';
+  html += shown.map(day => {
+    const r = rec(day);
+    const src = r.src === 'dash' ? '<span class="tag warn">live</span>' : '<span class="tag">script</span>' + (r.live ? ' <span class="tag warn">live</span>' : '') + (r.fixed ? ' <span class="tag">corrected</span>' : '');
+    return '<tr><td>' + esc(longDay(day)) + '</td><td>' + money(r.income) + '</td><td>' + money(r.wages) + '</td><td>' + money(r.ads) + '</td>' +
+      '<td class="' + (r.profit < 0 ? 'neg' : '') + '">' + money(r.profit) + '</td><td>' + pct(r.profit, r.income) + '</td><td>' + num(r.sold) + '</td>' +
+      '<td>' + (r.created == null ? '—' : num(r.created)) + '</td><td>' + num(r.stock) + '</td><td>' + (r.price ? money(r.price) : '—') + '</td><td class="l">' + src + '</td></tr>';
+  }).join('');
+  html += '</tbody></table></div></div>';
+  v.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------
+// Settings dialog
+// ---------------------------------------------------------------------
+const dlg = document.getElementById('settings');
+const $ = id => document.getElementById(id);
+function openSettings() {
+  const s = state.settings;
+  $('s-share').value = s.directorShare; $('s-cap').value = s.warehouseCap; $('s-add').value = s.addictionFlag;
+  $('s-idle').value = s.idleSkipDays; $('s-wz').value = s.wageZeroDays; $('s-mult').value = s.wageMult;
+  $('s-ee').value = s.eePerLevel; $('s-stock').value = s.stockMatch || '';
+  $('set-key').value = ''; $('set-key').placeholder = state.apiKey ? 'saved (hidden)' : 'required';
+  ['set-key-msg', 'imp-msg', 's-msg'].forEach(i => { $(i).textContent = ''; $(i).className = 'msg'; });
+  updateThemeBtn();
+  if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+}
+function closeSettings() { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); render(); }
+function msg(id, text, ok) { const m = $(id); m.textContent = text; m.className = 'msg ' + (ok ? 'ok' : 'err'); }
+
+$('set-close').onclick = closeSettings;
+$('set-key-save').onclick = () => {
+  const v = $('set-key').value.trim();
+  if (!v) return msg('set-key-msg', 'Paste a key first.');
+  state.apiKey = v; $('set-key').value = ''; $('set-key').placeholder = 'saved (hidden)';
+  state.lastError = ''; save(); lastAttempt = 0;
+  msg('set-key-msg', 'Saved. Pulling now.', true);
+  pull(true);
+};
+$('set-key-forget').onclick = () => {
+  state.apiKey = ''; save(); $('set-key').placeholder = 'required';
+  msg('set-key-msg', 'Key removed from this browser.', true);
+};
+$('s-save').onclick = () => {
+  const s = state.settings, n = id => Number($(id).value);
+  const checks = [['s-share', 0, 100, 'directorShare'], ['s-cap', 0, 1e9, 'warehouseCap'], ['s-add', -100, 0, 'addictionFlag'],
+    ['s-idle', 1, 30, 'idleSkipDays'], ['s-wz', 1, 60, 'wageZeroDays'], ['s-mult', 1, 60, 'wageMult'], ['s-ee', 0, 1e7, 'eePerLevel']];
+  for (const [id, lo, hi, k] of checks) {
+    const x = n(id);
+    if (!Number.isFinite(x) || x < lo || x > hi) return msg('s-msg', 'Check "' + $(id).previousElementSibling.textContent + '" (' + lo + ' to ' + hi + ').');
+    s[k] = x;
+  }
+  s.stockMatch = $('s-stock').value.trim();
+  if (state.data) state.data.share = state.data.profit * (s.directorShare / 100);
+  save(); msg('s-msg', 'Saved. The stock line setting applies from the next pull.', true);
+};
+function pickFile(msgEl) {
+  const inp = $('imp-input');
+  inp.value = '';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    if (f.size > 20 * 1024 * 1024) { msgEl.textContent = 'That file is too large to be a backup.'; msgEl.className = 'msg err'; return; }
+    const rd = new FileReader();
+    rd.onload = () => doImport(String(rd.result), msgEl);
+    rd.onerror = () => { msgEl.textContent = 'Could not read that file.'; msgEl.className = 'msg err'; };
+    rd.readAsText(f);
+  };
+  inp.click();
+}
+function doImport(text, msgEl) {
+  try {
+    const r = importBackup(text);
+    msgEl.textContent = 'Imported ' + r.days + ' day' + (r.days === 1 ? '' : 's') + ' and ' + r.trainees + ' ledger entr' + (r.trainees === 1 ? 'y' : 'ies') +
+      (r.usedPull ? ', plus the script\'s last pull' : '') + '.' + (r.hadKey ? ' The API key in the file was discarded.' : '');
+    msgEl.className = 'msg ok';
+    if (!state.data) msgEl.textContent += ' The file had no pull in it, so add your key above to see the dashboard.';
+    onboardNote = { text: msgEl.textContent, cls: 'ok' };
+    if (!dlg.open) render();
+  } catch (e) { msgEl.textContent = e.message || String(e); msgEl.className = 'msg err'; onboardNote = { text: msgEl.textContent, cls: 'err' }; }
+}
+$('imp-file').onclick = () => pickFile($('imp-msg'));
+$('imp-paste').onclick = () => { const t = $('imp-text').value.trim(); if (t) { doImport(t, $('imp-msg')); $('imp-text').value = ''; } };
+
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$('exp-json').onclick = () => {
+  const copy = JSON.parse(JSON.stringify(state)); delete copy.apiKey;
+  download('company-dashboard-' + completedWorkingDay() + '.json', JSON.stringify(copy, null, 1), 'application/json');
+};
+$('exp-csv').onclick = () => {
+  const days = Object.keys(state.history).sort();
+  const f = REC_FIELDS;
+  const lines = ['day,' + f.join(',') + ',source'].concat(days.map(d => {
+    const r = state.history[d];
+    return d + ',' + f.map(k => fin(r[k]) ? r[k] : '').join(',') + ',' + (r.src === 'dash' ? 'dashboard' : 'script');
+  }));
+  download('company-history-' + completedWorkingDay() + '.csv', lines.join('\r\n') + '\r\n', 'text/csv');
+};
+$('wipe').onclick = () => {
+  if (!confirm('Erase the key, history, ledger and settings from this browser?')) return;
+  try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+  location.reload();
+};
+
+// Theme: auto (follow the OS) / light / dark, remembered per browser.
+function getTheme() { let t = 'dark'; try { t = localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) {} return t === 'light' ? 'light' : 'dark'; }
+function applyTheme(t) {
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+}
+function updateThemeBtn() { $('theme-btn').textContent = 'Theme: ' + getTheme(); }
+$('theme-btn').onclick = () => {
+  const next = getTheme() === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  applyTheme(next); updateThemeBtn(); render();
+};
+applyTheme(getTheme());
+
+// ---------------------------------------------------------------------
+// Boot. Pull on open if the cache is stale, then check once a minute and
+// pull again whenever the last pull is over an hour old and the tab is visible.
+// ---------------------------------------------------------------------
+let resizeT = null;
+let lastW = window.innerWidth;
+// Width only: phones fire resize when the address bar slides, and a full redraw then is pure flicker.
+window.addEventListener('resize', () => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; clearTimeout(resizeT); resizeT = setTimeout(render, 150); });
+setInterval(() => {
+  if (document.visibilityState === 'visible' && state.apiKey && !pulling &&
+      Date.now() - state.pulledAt >= CACHE_MIN * 60000) pull(false);
+}, 60000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { render(); pull(false); }
+});
+if (state.data && state.data.staff) {
+  // Share depends on a setting that may have changed since the digest was stored.
+  state.data.share = state.data.profit * (state.settings.directorShare / 100);
+}
+render();
+pull(false);
+
+})();
+</script>
+</body>
+</html>
